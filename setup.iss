@@ -4,7 +4,11 @@
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Your Name"
 #define MyAppExeName "CheckUpdate.vbs"
-#define SourcePath "src"
+
+; CHANGED: Paths are now relative to root
+#define DistPath "dist"
+#define AssetPath "assets"
+#define ToolsPath "tools"
 
 [Setup]
 AppId={{YOUR-UUID-HERE}
@@ -12,7 +16,7 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=..
+OutputDir=.
 OutputBaseFilename=AutoFillSetup
 Compression=lzma
 SolidCompression=yes
@@ -24,18 +28,18 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 ; 1. Main Script -> Illustrator Presets (Cho Menu File > Scripts)
-Source: "{#SourcePath}\AutoFillFromSheet.jsx"; DestDir: "{code:GetIllustratorScriptsDir}"; Flags: ignoreversion
+Source: "{#DistPath}\AutoFillFromSheet.jsx"; DestDir: "{code:GetIllustratorScriptsDir}"; Flags: ignoreversion
 
 ; 1b. Main Script -> App Folder (Cho Action gọi trực tiếp "Other Script")
-Source: "{#SourcePath}\AutoFillFromSheet.jsx"; DestDir: "{app}"; Flags: ignoreversion
+// Source: "{#DistPath}\AutoFillFromSheet.jsx"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 2. Action File -> Install to App Folder so VBS can find it easily
-Source: "{#SourcePath}\actions\Auto_Clone_From_Sheet.aia"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#AssetPath}\actions\Auto_Clone_From_Sheet.aia"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 3. Update & Load Tools -> Program Files
-Source: "{#SourcePath}\tools\CheckUpdate.vbs"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourcePath}\tools\LoadAction.vbs"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourcePath}\config\config.ini"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ToolsPath}\CheckUpdate.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ToolsPath}\LoadAction.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#AssetPath}\config\config.ini"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; Shortcut to Check Update in Start Menu

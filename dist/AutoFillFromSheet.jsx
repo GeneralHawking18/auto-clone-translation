@@ -1,3 +1,10 @@
+// Auto-Generated File via build.js
+// DO NOT EDIT DIRECTLY
+
+
+// ==========================================
+// FILE: core/config/config.js
+// ==========================================
 /**
  * Cấu hình chung của script
  * @type {Object}
@@ -55,10 +62,10 @@ var CONFIG = {
     }
 };
 
-// ============================================================================
-// 2. UTILITY FUNCTIONS
-// ============================================================================
 
+// ==========================================
+// FILE: core/utils/common_utils.js
+// ==========================================
 /**
  * Module chứa các hàm tiện ích dùng chung
  * @namespace
@@ -166,15 +173,316 @@ var Utils = {
     }
 };
 
-// ============================================================================
-// 3. CLIPBOARD SERVICE (Windows)
-// ============================================================================
 
+// ==========================================
+// FILE: features/data_import/domain/entities/csv_row.js
+// ==========================================
+/**
+ * Entity: CsvRow
+ * Đại diện cho một dòng dữ liệu đã được parse từ CSV
+ * @namespace
+ */
+var CsvRow = {
+    /**
+     * Tạo entity CsvRow mới
+     * @param {Object} data - Raw data object
+     * @returns {Object} CsvRow entity
+     */
+    create: function (data) {
+        return {
+            headers: data.headers || [],
+            referenceMap: data.referenceMap || {},
+            referenceMapOriginal: data.referenceMapOriginal || {},
+            rows: data.rows || [],
+            dataRows: data.dataRows || [],
+            separator: data.separator || "\t"
+        };
+    },
+
+    /**
+     * Kiểm tra entity có hợp lệ không
+     * @param {Object} entity
+     * @returns {boolean}
+     */
+    isValid: function (entity) {
+        return entity &&
+            entity.headers &&
+            entity.headers.length > 0 &&
+            entity.rows.length > 0;
+    }
+};
+
+
+// ==========================================
+// FILE: features/font_manager/domain/entities/font_info.js
+// ==========================================
+/**
+ * Entity: FontInfo
+ * Đại diện cho thông tin một font
+ * @namespace
+ */
+var FontInfo = {
+    /**
+     * Tạo entity FontInfo mới
+     * @param {string} name - Tên font
+     * @param {boolean} exists - Font có tồn tại trong hệ thống không
+     * @param {string} matchedName - Tên font thực sự được match
+     * @returns {Object} FontInfo entity
+     */
+    create: function (name, exists, matchedName) {
+        return {
+            name: name || "",
+            exists: exists || false,
+            matchedName: matchedName || ""
+        };
+    },
+
+    /**
+     * Tạo entity từ kết quả check
+     * @param {string} name
+     * @param {Object} checkResult - { exists, matchedName }
+     * @returns {Object}
+     */
+    fromCheckResult: function (name, checkResult) {
+        return this.create(
+            name,
+            checkResult.exists,
+            checkResult.matchedName
+        );
+    }
+};
+
+
+// ==========================================
+// FILE: features/template_engine/domain/entities/template_group.js
+// ==========================================
+/**
+ * Entity: TemplateGroup
+ * Đại diện cho một Group template trong Illustrator
+ * @namespace
+ */
+var TemplateGroup = {
+    /**
+     * Tạo entity TemplateGroup từ GroupItem
+     * @param {GroupItem} groupItem - Illustrator GroupItem
+     * @returns {Object} TemplateGroup entity
+     */
+    create: function (groupItem) {
+        return {
+            name: groupItem.name || "Unnamed",
+            width: groupItem.width || 0,
+            height: groupItem.height || 0,
+            top: groupItem.top || 0,
+            left: groupItem.left || 0,
+            _nativeObject: groupItem
+        };
+    },
+
+    /**
+     * Lấy native Illustrator object
+     * @param {Object} entity
+     * @returns {GroupItem}
+     */
+    getNative: function (entity) {
+        return entity._nativeObject;
+    }
+};
+
+
+// ==========================================
+// FILE: features/data_import/application/interfaces/data_reader.js
+// ==========================================
+/**
+ * Interface: IDataReader
+ * Định nghĩa contract cho các service đọc dữ liệu
+ * 
+ * @interface
+ * 
+ * Các class implement interface này phải có:
+ * - init(utils, config): Khởi tạo với dependencies
+ * - download(url): Tải file từ URL, trả về File object
+ * - parse(fileObj): Parse file, trả về CsvRow entity
+ * - parseLine(line, separator): Parse một dòng, trả về Array
+ */
+var IDataReader = {
+    /**
+     * @abstract
+     * @param {Object} utils
+     * @param {Object} config
+     */
+    init: function (utils, config) {
+        throw new Error("IDataReader.init() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {string} url
+     * @returns {File}
+     */
+    download: function (url) {
+        throw new Error("IDataReader.download() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {File} fileObj
+     * @returns {Object} CsvRow entity
+     */
+    parse: function (fileObj) {
+        throw new Error("IDataReader.parse() must be implemented");
+    }
+};
+
+
+// ==========================================
+// FILE: features/font_manager/application/interfaces/font_repository.js
+// ==========================================
+/**
+ * Interface: IFontRepository
+ * Định nghĩa contract cho các service xử lý font
+ * 
+ * @interface
+ * 
+ * Các class implement interface này phải có:
+ * - init(utils): Khởi tạo với dependencies
+ * - findByName(fontName): Tìm font, trả về TextFont hoặc null
+ * - checkExists(fontName): Kiểm tra font, trả về FontInfo entity
+ * - applyToTextFrame(textFrame, font): Áp dụng font cho TextFrame
+ * - analyzeRequired(dataRows, fontColumnIndex): Phân tích font cần dùng
+ * - exportSystemFonts(): Xuất danh sách font hệ thống
+ */
+var IFontRepository = {
+    /**
+     * @abstract
+     * @param {Object} utils
+     */
+    init: function (utils) {
+        throw new Error("IFontRepository.init() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {string} fontName
+     * @returns {TextFont|null}
+     */
+    findByName: function (fontName) {
+        throw new Error("IFontRepository.findByName() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {string} fontName
+     * @returns {Object} FontInfo entity
+     */
+    checkExists: function (fontName) {
+        throw new Error("IFontRepository.checkExists() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {TextFrame} textFrame
+     * @param {TextFont} font
+     */
+    applyToTextFrame: function (textFrame, font) {
+        throw new Error("IFontRepository.applyToTextFrame() must be implemented");
+    }
+};
+
+
+// ==========================================
+// FILE: features/template_engine/application/interfaces/template_service.js
+// ==========================================
+/**
+ * Interface: ITemplateService
+ * Định nghĩa contract cho các service xử lý template
+ * 
+ * @interface
+ * 
+ * Các class implement interface này phải có:
+ * - init(fontService, utils, config): Khởi tạo với dependencies
+ * - getSelectedTemplate(): Lấy Group template đang chọn
+ * - getAllTextFrames(container): Lấy tất cả TextFrame trong container
+ * - analyzeMapping(group, headers, referenceMap, dataRows): Phân tích mapping
+ * - createClone(template, rowIndex, dataDict, referenceMap): Tạo clone
+ * - forceRefresh(templateGroup): Refresh màn hình
+ */
+var ITemplateService = {
+    /**
+     * @abstract
+     * @param {Object} fontService
+     * @param {Object} utils
+     * @param {Object} config
+     */
+    init: function (fontService, utils, config) {
+        throw new Error("ITemplateService.init() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @returns {GroupItem}
+     * @throws {Error} Nếu không có selection phù hợp
+     */
+    getSelectedTemplate: function () {
+        throw new Error("ITemplateService.getSelectedTemplate() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {PageItem} container
+     * @returns {Array<TextFrame>}
+     */
+    getAllTextFrames: function (container) {
+        throw new Error("ITemplateService.getAllTextFrames() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {GroupItem} group
+     * @param {Array} headers
+     * @param {Object} referenceMap
+     * @param {Array} dataRows
+     * @returns {Object} { text, count, hasMasterFont }
+     */
+    analyzeMapping: function (group, headers, referenceMap, dataRows) {
+        throw new Error("ITemplateService.analyzeMapping() must be implemented");
+    },
+
+    /**
+     * @abstract
+     * @param {GroupItem} template
+     * @param {number} rowIndex
+     * @param {Object} dataDict
+     * @param {Object} referenceMap
+     */
+    createClone: function (template, rowIndex, dataDict, referenceMap) {
+        throw new Error("ITemplateService.createClone() must be implemented");
+    }
+};
+
+
+// ==========================================
+// FILE: features/data_import/infrastructure/clipboard_service.js
+// ==========================================
 /**
  * Module đọc clipboard trên Windows
  * @namespace
  */
 var ClipboardService = {
+    // Dependencies (injected via init)
+    _utils: null,
+    _config: null,
+
+    /**
+     * Khởi tạo service với dependencies
+     * @param {Object} utils - Utils module
+     * @param {Object} config - CONFIG object
+     */
+    init: function (utils, config) {
+        this._utils = utils;
+        this._config = config;
+        return this;
+    },
+
     /**
      * Đọc clipboard bằng VBScript
      * @returns {string|null} Nội dung clipboard hoặc null
@@ -205,12 +513,12 @@ var ClipboardService = {
         var waited = 0;
         var clipText = null;
 
-        while (waited < CONFIG.DELAYS.CLIPBOARD_TIMEOUT) {
-            $.sleep(CONFIG.DELAYS.CLIPBOARD_CHECK);
-            waited += CONFIG.DELAYS.CLIPBOARD_CHECK;
+        while (waited < this._config.DELAYS.CLIPBOARD_TIMEOUT) {
+            $.sleep(this._config.DELAYS.CLIPBOARD_CHECK);
+            waited += this._config.DELAYS.CLIPBOARD_CHECK;
 
             if (outFile.exists) {
-                $.sleep(CONFIG.DELAYS.CLIPBOARD_CHECK);
+                $.sleep(this._config.DELAYS.CLIPBOARD_CHECK);
                 outFile.encoding = "UTF-16";
                 if (outFile.open("r")) {
                     clipText = outFile.read();
@@ -221,10 +529,10 @@ var ClipboardService = {
         }
 
         // Cleanup
-        Utils.safeExecute(function () { vbsFile.remove(); });
-        Utils.safeExecute(function () { outFile.remove(); });
+        this._utils.safeExecute(function () { vbsFile.remove(); });
+        this._utils.safeExecute(function () { outFile.remove(); });
 
-        return clipText ? Utils.trim(clipText) : null;
+        return clipText ? this._utils.trim(clipText) : null;
     },
 
     /**
@@ -256,7 +564,7 @@ var ClipboardService = {
             batFile.remove();
         }
 
-        return clipText ? Utils.trim(clipText) : null;
+        return clipText ? this._utils.trim(clipText) : null;
     },
 
     /**
@@ -264,11 +572,12 @@ var ClipboardService = {
      * @returns {string} Nội dung clipboard hoặc chuỗi rỗng
      */
     read: function () {
+        var self = this;
         var result = this._readViaVBScript();
 
         if (!result) {
-            result = Utils.safeExecute(
-                function () { return ClipboardService._readViaPowerShell(); },
+            result = this._utils.safeExecute(
+                function () { return self._readViaPowerShell(); },
                 null
             );
         }
@@ -277,15 +586,30 @@ var ClipboardService = {
     }
 };
 
-// ============================================================================
-// 4. CSV/TSV PARSING SERVICE
-// ============================================================================
 
+// ==========================================
+// FILE: features/data_import/infrastructure/csv_service.js
+// ==========================================
 /**
  * Module xử lý đọc và parse file CSV/TSV
  * @namespace
  */
 var CSVService = {
+    // Dependencies (injected via init)
+    _utils: null,
+    _config: null,
+
+    /**
+     * Khởi tạo service với dependencies
+     * @param {Object} utils - Utils module
+     * @param {Object} config - CONFIG object
+     */
+    init: function (utils, config) {
+        this._utils = utils;
+        this._config = config;
+        return this;
+    },
+
     /**
      * Tải file từ URL về máy
      * @param {string} url - URL cần tải
@@ -293,19 +617,19 @@ var CSVService = {
      * @throws {Error} Nếu không tải được
      */
     download: function (url) {
-        var exportUrl = Utils.convertSheetUrl(url);
-        var tempFile = new File(Folder.temp + "/" + CONFIG.TEMP_FILENAME);
+        var exportUrl = this._utils.convertSheetUrl(url);
+        var tempFile = new File(Folder.temp + "/" + this._config.TEMP_FILENAME);
 
-        if (Utils.isWindows()) {
+        if (this._utils.isWindows()) {
             this._downloadWindows(exportUrl, tempFile);
         } else {
             this._downloadMac(exportUrl, tempFile);
         }
 
-        $.sleep(CONFIG.DELAYS.DOWNLOAD);
+        $.sleep(this._config.DELAYS.DOWNLOAD);
 
         if (!tempFile.exists) {
-            throw new Error(CONFIG.MESSAGES.DOWNLOAD_ERROR);
+            throw new Error(this._config.MESSAGES.DOWNLOAD_ERROR);
         }
 
         return tempFile;
@@ -380,7 +704,7 @@ var CSVService = {
     _detectSeparator: function (firstLine) {
         if (firstLine.indexOf("\t") !== -1) return "\t";
         if (firstLine.indexOf(",") !== -1) return ",";
-        return CONFIG.DEFAULT_SEPARATOR;
+        return this._config.DEFAULT_SEPARATOR;
     },
 
     /**
@@ -401,7 +725,7 @@ var CSVService = {
 
         // Kiểm tra HTML response (do Google yêu cầu đăng nhập)
         if (content.indexOf("<!DOCTYPE html>") !== -1 || content.indexOf("<html") !== -1) {
-            throw new Error(CONFIG.MESSAGES.ACCESS_ERROR);
+            throw new Error(this._config.MESSAGES.ACCESS_ERROR);
         }
 
         var lines = content.split(/\r?\n/);
@@ -409,8 +733,8 @@ var CSVService = {
             lines.pop();
         }
 
-        if (lines.length < CONFIG.MIN_CSV_LINES) {
-            throw new Error(CONFIG.MESSAGES.MIN_LINES_ERROR);
+        if (lines.length < this._config.MIN_CSV_LINES) {
+            throw new Error(this._config.MESSAGES.MIN_LINES_ERROR);
         }
 
         var separator = this._detectSeparator(lines[0]);
@@ -442,7 +766,7 @@ var CSVService = {
         var rawHeader = this.parseLine(line, separator);
         var headers = [];
         for (var i = 0; i < rawHeader.length; i++) {
-            headers.push(Utils.normalizeKey(rawHeader[i]));
+            headers.push(this._utils.normalizeKey(rawHeader[i]));
         }
         return headers;
     },
@@ -457,8 +781,8 @@ var CSVService = {
         var original = {};
 
         for (var j = 0; j < headers.length; j++) {
-            var refValue = Utils.trim(Utils.safeGet(rawReference, j, ""));
-            normalized[headers[j]] = Utils.normalizeForCompare(refValue);
+            var refValue = this._utils.trim(this._utils.safeGet(rawReference, j, ""));
+            normalized[headers[j]] = this._utils.normalizeForCompare(refValue);
             original[headers[j]] = refValue;
         }
 
@@ -478,15 +802,27 @@ var CSVService = {
     }
 };
 
-// ============================================================================
-// 5. FONT SERVICE
-// ============================================================================
 
+// ==========================================
+// FILE: features/font_manager/infrastructure/font_service.js
+// ==========================================
 /**
  * Module xử lý font trong Illustrator
  * @namespace
  */
 var FontService = {
+    // Dependencies (injected via init)
+    _utils: null,
+
+    /**
+     * Khởi tạo service với dependencies
+     * @param {Object} utils - Utils module
+     */
+    init: function (utils) {
+        this._utils = utils;
+        return this;
+    },
+
     /**
      * Tìm font theo tên (exact match hoặc fuzzy match)
      * @param {string} fontName - Tên font cần tìm
@@ -496,7 +832,7 @@ var FontService = {
         if (!fontName || fontName === "") return null;
 
         // Thử exact match trước
-        var font = Utils.safeExecute(function () {
+        var font = this._utils.safeExecute(function () {
             return app.textFonts.getByName(fontName);
         });
 
@@ -563,19 +899,19 @@ var FontService = {
         if (!font || !textFrame) return;
 
         // Cách 1: Áp dụng cho toàn bộ textRange
-        Utils.safeExecute(function () {
+        this._utils.safeExecute(function () {
             textFrame.textRange.characterAttributes.textFont = font;
         });
 
         // Cách 2: Áp dụng cho từng character
-        Utils.safeExecute(function () {
+        this._utils.safeExecute(function () {
             for (var c = 0; c < textFrame.characters.length; c++) {
                 textFrame.characters[c].characterAttributes.textFont = font;
             }
         });
 
         // Cách 3: Áp dụng qua story
-        Utils.safeExecute(function () {
+        this._utils.safeExecute(function () {
             textFrame.story.textRange.characterAttributes.textFont = font;
         });
     },
@@ -591,7 +927,7 @@ var FontService = {
         var fontList = [];
 
         for (var r = 0; r < dataRows.length; r++) {
-            var fontName = Utils.trim(Utils.safeGet(dataRows[r], fontColumnIndex, ""));
+            var fontName = this._utils.trim(this._utils.safeGet(dataRows[r], fontColumnIndex, ""));
 
             if (fontName !== "") {
                 if (!fontStats.hasOwnProperty(fontName)) {
@@ -610,18 +946,19 @@ var FontService = {
      * @returns {string|null} Đường dẫn file hoặc null nếu lỗi
      */
     exportSystemFonts: function () {
+        var self = this;
         try {
             var fonts = app.textFonts;
             var fontCount = fonts.length;
             var content = "";
 
             for (var i = 0; i < fontCount; i++) {
-                Utils.safeExecute(function () {
+                this._utils.safeExecute(function () {
                     content += fonts[i].name + "\n";
                 });
             }
 
-            var path = Utils.writeLog(content, "DanhSachFont_Illustrator.txt");
+            var path = this._utils.writeLog(content, "DanhSachFont_Illustrator.txt");
             alert("Da xuat " + fontCount + " font ra Desktop:\n" + path);
             return path;
         } catch (e) {
@@ -631,15 +968,33 @@ var FontService = {
     }
 };
 
-// ============================================================================
-// 6. ILLUSTRATOR SERVICE
-// ============================================================================
 
+// ==========================================
+// FILE: features/template_engine/infrastructure/ai_service.js
+// ==========================================
 /**
  * Module xử lý các thao tác với Illustrator
  * @namespace
  */
 var AIService = {
+    // Dependencies (injected via init)
+    _fontService: null,
+    _utils: null,
+    _config: null,
+
+    /**
+     * Khởi tạo service với dependencies
+     * @param {Object} fontService - FontService module
+     * @param {Object} utils - Utils module
+     * @param {Object} config - CONFIG object
+     */
+    init: function (fontService, utils, config) {
+        this._fontService = fontService;
+        this._utils = utils;
+        this._config = config;
+        return this;
+    },
+
     /**
      * Lấy Group template đang được chọn
      * @returns {GroupItem} Group được chọn
@@ -647,19 +1002,19 @@ var AIService = {
      */
     getSelectedTemplate: function () {
         if (app.documents.length === 0) {
-            throw new Error(CONFIG.MESSAGES.NO_DOC);
+            throw new Error(this._config.MESSAGES.NO_DOC);
         }
 
         var selection = app.activeDocument.selection;
 
         if (!selection || selection.length === 0) {
-            throw new Error(CONFIG.MESSAGES.NO_SELECTION);
+            throw new Error(this._config.MESSAGES.NO_SELECTION);
         }
         if (selection.length > 1) {
-            throw new Error(CONFIG.MESSAGES.MULTI_SELECTION);
+            throw new Error(this._config.MESSAGES.MULTI_SELECTION);
         }
         if (selection[0].typename !== "GroupItem") {
-            throw new Error(CONFIG.MESSAGES.NOT_GROUP);
+            throw new Error(this._config.MESSAGES.NOT_GROUP);
         }
 
         return selection[0];
@@ -694,7 +1049,7 @@ var AIService = {
      */
     _findFontColumnIndex: function (headers) {
         for (var h = 0; h < headers.length; h++) {
-            if (headers[h] === CONFIG.MASTER_FONT_KEY) {
+            if (headers[h] === this._config.MASTER_FONT_KEY) {
                 return h;
             }
         }
@@ -743,8 +1098,8 @@ var AIService = {
         var matchCount = 0;
 
         for (var i = 0; i < frames.length; i++) {
-            var content = Utils.trim(frames[i].contents);
-            var contentNormalized = Utils.normalizeForCompare(content);
+            var content = this._utils.trim(frames[i].contents);
+            var contentNormalized = this._utils.normalizeForCompare(content);
 
             // Tìm header khớp với reference value
             for (var k = 0; k < headers.length; k++) {
@@ -776,7 +1131,7 @@ var AIService = {
         ];
 
         if (!hasMasterFont) {
-            report.push("  ⚠️ Không có cột '" + CONFIG.MASTER_FONT_KEY + "' trong data");
+            report.push("  ⚠️ Không có cột '" + this._config.MASTER_FONT_KEY + "' trong data");
             report.push("  → Giữ nguyên font gốc của template");
             return { lines: report };
         }
@@ -786,7 +1141,7 @@ var AIService = {
             return { lines: report };
         }
 
-        var fontAnalysis = FontService.analyzeRequired(dataRows, fontColumnIndex);
+        var fontAnalysis = this._fontService.analyzeRequired(dataRows, fontColumnIndex);
         var fontList = fontAnalysis.fontList;
         var fontStats = fontAnalysis.fontStats;
 
@@ -802,7 +1157,7 @@ var AIService = {
         for (var f = 0; f < fontList.length; f++) {
             var fn = fontList[f];
             var count = fontStats[fn];
-            var fontInfo = FontService.checkExists(fn);
+            var fontInfo = this._fontService.checkExists(fn);
 
             var fontStatus = fontInfo.exists ? "✅" : "⚠️ (Không tìm thấy)";
             var displayText = "  " + fontStatus + " \"" + fn + "\"";
@@ -820,7 +1175,7 @@ var AIService = {
         var previewCount = Math.min(5, dataRows.length);
 
         for (var p = 0; p < previewCount; p++) {
-            var pFont = Utils.trim(Utils.safeGet(dataRows[p], fontColumnIndex, "(không có)"));
+            var pFont = this._utils.trim(this._utils.safeGet(dataRows[p], fontColumnIndex, "(không có)"));
             report.push("     Dòng " + (p + 1) + ": " + pFont);
         }
 
@@ -864,7 +1219,7 @@ var AIService = {
      */
     _positionClonedGroup: function (newGroup, template, rowIndex) {
         var step = rowIndex + 1;
-        var blockHeight = template.height + CONFIG.SPACING;
+        var blockHeight = template.height + this._config.SPACING;
         newGroup.top = template.top - (blockHeight * step);
         newGroup.left = template.left;
     },
@@ -874,12 +1229,12 @@ var AIService = {
      * @private
      */
     _getRowFont: function (dataDict) {
-        if (!dataDict.hasOwnProperty(CONFIG.MASTER_FONT_KEY)) {
+        if (!dataDict.hasOwnProperty(this._config.MASTER_FONT_KEY)) {
             return null;
         }
 
-        var fontName = dataDict[CONFIG.MASTER_FONT_KEY];
-        return FontService.findByName(fontName);
+        var fontName = dataDict[this._config.MASTER_FONT_KEY];
+        return this._fontService.findByName(fontName);
     },
 
     /**
@@ -888,8 +1243,8 @@ var AIService = {
      */
     _processTextFrame: function (tf, dataDict, referenceMap, rowFont) {
         try {
-            var content = Utils.trim(tf.contents);
-            var contentNormalized = Utils.normalizeForCompare(content);
+            var content = this._utils.trim(tf.contents);
+            var contentNormalized = this._utils.normalizeForCompare(content);
 
             // Tìm key phù hợp
             var matchedKey = null;
@@ -912,7 +1267,7 @@ var AIService = {
 
             // Áp dụng font
             if (rowFont) {
-                FontService.applyToTextFrame(tf, rowFont);
+                this._fontService.applyToTextFrame(tf, rowFont);
             }
 
             // Khôi phục thuộc tính
@@ -929,17 +1284,18 @@ var AIService = {
      * @private
      */
     _saveTextAttributes: function (tf) {
+        var self = this;
         var attrs = {
             justification: null,
             size: null,
             tracking: null
         };
 
-        Utils.safeExecute(function () {
+        this._utils.safeExecute(function () {
             attrs.justification = tf.paragraphs[0].paragraphAttributes.justification;
         });
 
-        Utils.safeExecute(function () {
+        this._utils.safeExecute(function () {
             attrs.size = tf.textRange.characterAttributes.size;
             attrs.tracking = tf.textRange.characterAttributes.tracking;
         });
@@ -953,19 +1309,19 @@ var AIService = {
      */
     _restoreTextAttributes: function (tf, attrs) {
         if (attrs.justification !== null) {
-            Utils.safeExecute(function () {
+            this._utils.safeExecute(function () {
                 tf.paragraphs[0].paragraphAttributes.justification = attrs.justification;
             });
         }
 
         if (attrs.size !== null) {
-            Utils.safeExecute(function () {
+            this._utils.safeExecute(function () {
                 tf.textRange.characterAttributes.size = attrs.size;
             });
         }
 
         if (attrs.tracking !== null) {
-            Utils.safeExecute(function () {
+            this._utils.safeExecute(function () {
                 tf.textRange.characterAttributes.tracking = attrs.tracking;
             });
         }
@@ -976,7 +1332,7 @@ var AIService = {
      * @private
      */
     _nudgeElement: function (element, offset) {
-        Utils.safeExecute(function () {
+        this._utils.safeExecute(function () {
             var originalLeft = element.left;
             var originalTop = element.top;
             element.left = originalLeft + offset;
@@ -990,51 +1346,73 @@ var AIService = {
      * Force refresh màn hình
      */
     forceRefresh: function (templateGroup) {
+        var self = this;
         // Redraw nhiều lần
         app.redraw();
-        $.sleep(CONFIG.DELAYS.REFRESH);
+        $.sleep(this._config.DELAYS.REFRESH);
         app.redraw();
 
         // Bỏ chọn rồi chọn lại
         app.activeDocument.selection = null;
-        $.sleep(CONFIG.DELAYS.NUDGE);
+        $.sleep(this._config.DELAYS.NUDGE);
         templateGroup.selected = true;
-        $.sleep(CONFIG.DELAYS.NUDGE);
+        $.sleep(this._config.DELAYS.NUDGE);
         app.activeDocument.selection = null;
 
         // Zoom trick
-        Utils.safeExecute(function () {
+        this._utils.safeExecute(function () {
             var doc = app.activeDocument;
             var currentView = doc.views[0];
             var originalZoom = currentView.zoom;
             currentView.zoom = originalZoom * 1.01;
             app.redraw();
-            $.sleep(CONFIG.DELAYS.NUDGE);
+            $.sleep(self._config.DELAYS.NUDGE);
             currentView.zoom = originalZoom;
             app.redraw();
         });
     }
 };
 
-// ============================================================================
-// 7. UI SERVICE
-// ============================================================================
 
+// ==========================================
+// FILE: features/ui/presentation/main_dialog.js
+// ==========================================
 /**
  * Module xử lý giao diện người dùng
  * @namespace
  */
 var UIService = {
+    // Dependencies (injected via init)
+    _clipboardService: null,
+    _fontService: null,
+    _utils: null,
+    _config: null,
+
+    /**
+     * Khởi tạo service với dependencies
+     * @param {Object} clipboardService - ClipboardService module
+     * @param {Object} fontService - FontService module
+     * @param {Object} utils - Utils module
+     * @param {Object} config - CONFIG object
+     */
+    init: function (clipboardService, fontService, utils, config) {
+        this._clipboardService = clipboardService;
+        this._fontService = fontService;
+        this._utils = utils;
+        this._config = config;
+        return this;
+    },
+
     /**
      * Hiển thị dialog chọn nguồn dữ liệu
      * @returns {Object|null} { type: "url"|"file", data: string|File } hoặc null
      */
     showInputWindow: function () {
         // Đọc clipboard
-        var clipText = ClipboardService.read();
+        var clipText = this._clipboardService.read();
 
         // Nếu có link Sheet, dùng luôn
-        if (Utils.isGoogleSheetUrl(clipText)) {
+        if (this._utils.isGoogleSheetUrl(clipText)) {
             return { type: "url", data: clipText };
         }
 
@@ -1075,8 +1453,8 @@ var UIService = {
         };
 
         btnRetry.onClick = function () {
-            var newClip = ClipboardService.read();
-            if (Utils.isGoogleSheetUrl(newClip)) {
+            var newClip = self._clipboardService.read();
+            if (self._utils.isGoogleSheetUrl(newClip)) {
                 result.type = "url";
                 result.data = newClip;
                 win.close(1);
@@ -1099,6 +1477,7 @@ var UIService = {
      * @returns {boolean} true nếu user xác nhận
      */
     showConfirmDialog: function (templateName, rowCount, mappingInfo) {
+        var self = this;
         var msg = "• Template: " + templateName + "\n";
         msg += "• Số dòng dữ liệu: " + rowCount + "\n\n";
         msg += mappingInfo.text;
@@ -1107,14 +1486,14 @@ var UIService = {
             msg += "\n\n❌ CẢNH BÁO: Không khớp text nào!";
         }
 
-        var win = new Window("dialog", CONFIG.UI.TITLE);
+        var win = new Window("dialog", this._config.UI.TITLE);
         win.orientation = "column";
         win.alignChildren = ["fill", "top"];
 
         // Panel báo cáo
         var reportPanel = win.add("panel", undefined, "📊 BÁO CÁO THỐNG KÊ");
         reportPanel.alignChildren = ["fill", "top"];
-        reportPanel.add("edittext", [0, 0, CONFIG.UI.DIALOG_WIDTH, CONFIG.UI.DIALOG_HEIGHT], msg,
+        reportPanel.add("edittext", [0, 0, this._config.UI.DIALOG_WIDTH, this._config.UI.DIALOG_HEIGHT], msg,
             { multiline: true, scrolling: true, readonly: true });
 
         // Panel font tools
@@ -1122,10 +1501,10 @@ var UIService = {
         fontPanel.orientation = "row";
         fontPanel.alignChildren = ["center", "center"];
 
-        var btnExport = fontPanel.add("button", undefined, "📋 " + CONFIG.UI.BTN_EXPORT_FONT);
+        var btnExport = fontPanel.add("button", undefined, "📋 " + this._config.UI.BTN_EXPORT_FONT);
         btnExport.preferredSize = [250, 35];
         btnExport.onClick = function () {
-            FontService.exportSystemFonts();
+            self._fontService.exportSystemFonts();
         };
 
         fontPanel.add("statictext", undefined, "→ Xuất file .txt ra Desktop");
@@ -1134,47 +1513,71 @@ var UIService = {
         var grp = win.add("group");
         grp.alignment = ["center", "bottom"];
 
-        var btnOK = grp.add("button", undefined, CONFIG.UI.BTN_OK, { name: "ok" });
+        var btnOK = grp.add("button", undefined, this._config.UI.BTN_OK, { name: "ok" });
         btnOK.preferredSize = [150, 35];
 
-        var btnCancel = grp.add("button", undefined, CONFIG.UI.BTN_CANCEL, { name: "cancel" });
+        var btnCancel = grp.add("button", undefined, this._config.UI.BTN_CANCEL, { name: "cancel" });
         btnCancel.preferredSize = [100, 35];
 
         return win.show() === 1;
     }
 };
 
-// ============================================================================
-// 8. MAIN APPLICATION
-// ============================================================================
 
+// ==========================================
+// FILE: main.jsx
+// ==========================================
 /**
  * Module điều khiển luồng chính của ứng dụng
  * @namespace
  */
 var App = {
+    // Dependencies (injected via init)
+    _aiService: null,
+    _csvService: null,
+    _uiService: null,
+    _config: null,
+    _utils: null,
+
+    /**
+     * Khởi tạo App với dependencies
+     * @param {Object} aiService - AIService
+     * @param {Object} csvService - CSVService
+     * @param {Object} uiService - UIService
+     * @param {Object} utils - Utils
+     * @param {Object} config - CONFIG
+     */
+    init: function (aiService, csvService, uiService, utils, config) {
+        this._aiService = aiService;
+        this._csvService = csvService;
+        this._uiService = uiService;
+        this._utils = utils;
+        this._config = config;
+        return this;
+    },
+
     /**
      * Chạy ứng dụng
      */
     run: function () {
         try {
             // Bước 1: Lấy template
-            var templateGroup = AIService.getSelectedTemplate();
+            var templateGroup = this._aiService.getSelectedTemplate();
 
             // Bước 2: Lấy nguồn dữ liệu
             var csvFile = this._getDataSource();
             if (!csvFile) return;
 
             // Bước 3: Parse và xác nhận
-            var csvData = CSVService.parse(csvFile);
-            var mappingInfo = AIService.analyzeMapping(
+            var csvData = this._csvService.parse(csvFile);
+            var mappingInfo = this._aiService.analyzeMapping(
                 templateGroup,
                 csvData.headers,
                 csvData.referenceMap,
                 csvData.dataRows
             );
 
-            if (!UIService.showConfirmDialog(templateGroup.name, csvData.rows.length, mappingInfo)) {
+            if (!this._uiService.showConfirmDialog(templateGroup.name, csvData.rows.length, mappingInfo)) {
                 return;
             }
 
@@ -1183,7 +1586,7 @@ var App = {
             var created = this._createClones(templateGroup, csvData);
 
             // Bước 5: Refresh màn hình
-            AIService.forceRefresh(templateGroup);
+            this._aiService.forceRefresh(templateGroup);
 
             // Hoàn thành
             alert("Xong rồi đấy! Đã xử lý " + created + " bản.");
@@ -1199,11 +1602,11 @@ var App = {
      * @private
      */
     _getDataSource: function () {
-        var source = UIService.showInputWindow();
+        var source = this._uiService.showInputWindow();
         if (!source) return null;
 
         if (source.type === "url") {
-            return CSVService.download(source.data);
+            return this._csvService.download(source.data);
         }
 
         return source.data;
@@ -1228,14 +1631,14 @@ var App = {
             var dict = {};
 
             for (var k = 0; k < csvData.headers.length; k++) {
-                dict[csvData.headers[k]] = Utils.trim(Utils.safeGet(values, k, ""));
+                dict[csvData.headers[k]] = this._utils.trim(this._utils.safeGet(values, k, ""));
             }
 
-            AIService.createClone(templateGroup, created, dict, csvData.referenceMap);
+            this._aiService.createClone(templateGroup, created, dict, csvData.referenceMap);
             created++;
 
             // Redraw định kỳ
-            if (created % CONFIG.REDRAW_INTERVAL === 0) {
+            if (created % this._config.REDRAW_INTERVAL === 0) {
                 app.redraw();
             }
         }
@@ -1245,7 +1648,19 @@ var App = {
 };
 
 // ============================================================================
-// RUN
+// COMPOSITION ROOT - Wire up all dependencies
 // ============================================================================
 
+// Initialize services with their dependencies
+ClipboardService.init(Utils, CONFIG);
+CSVService.init(Utils, CONFIG);
+FontService.init(Utils);
+AIService.init(FontService, Utils, CONFIG);
+UIService.init(ClipboardService, FontService, Utils, CONFIG);
+
+// Initialize App with all services
+App.init(AIService, CSVService, UIService, Utils, CONFIG);
+
+// Run the application
 App.run();
+
