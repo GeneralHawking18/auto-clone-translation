@@ -15,6 +15,7 @@ if (-not (Test-Path $configPath)) {
 $config = Get-Content $configPath | ConvertFrom-Json
 $currentVersion = $config.version
 $repo = $config.githubRepo
+$checkPrerelease = if ($config.checkPrerelease) { $config.checkPrerelease } else { $false }
 
 if (-not $repo) {
     [System.Windows.Forms.MessageBox]::Show("GitHub repo not configured in config.json", "Error", "OK", "Error")
@@ -22,17 +23,27 @@ if (-not $repo) {
 }
 
 try {
-    # Call GitHub API
-    $release = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" `
-        -Headers @{ "User-Agent" = "UpdateChecker" }
+    # Call GitHub API - use different endpoint based on prerelease setting
+    if ($checkPrerelease) {
+        # Get all releases and pick the first one (includes pre-releases)
+        $releases = Invoke-RestMethod "https://api.github.com/repos/$repo/releases" `
+            -Headers @{ "User-Agent" = "UpdateChecker" }
+        $release = $releases | Select-Object -First 1
+    } else {
+        # Get only the latest stable release
+        $release = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" `
+            -Headers @{ "User-Agent" = "UpdateChecker" }
+    }
     
     $latestVersion = $release.tag_name -replace '^v', ''
     $downloadUrl = if ($release.assets.Count -gt 0) { $release.assets[0].browser_download_url } else { $null }
-    
+    $isPrerelease = $release.prerelease
+
     # Compare versions
     if ([version]$latestVersion -gt [version]$currentVersion) {
+        $prereleaseNote = if ($isPrerelease) { " (Pre-release)" } else { "" }
         $result = [System.Windows.Forms.MessageBox]::Show(
-            "New version $latestVersion available!`nCurrent: $currentVersion`n`nDownload now?",
+            "New version $latestVersion$prereleaseNote available!`nCurrent: $currentVersion`n`nDownload now?",
             "Update Available", "YesNo", "Information")
         
         if ($result -eq "Yes" -and $downloadUrl) {

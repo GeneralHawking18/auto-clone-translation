@@ -1,5 +1,6 @@
 {
     "version": "1.0.0",
     "githubRepo": "GeneralHawking18/auto-clone-translation",
-    "actionSetName": "Auto Clone Translation"
+    "actionSetName": "Auto Clone Translation",
+    "checkPrerelease": true
 }
