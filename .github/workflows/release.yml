@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Extracted version: $version"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update version in config.json
+        shell: pwsh
+        run: |
+          $configPath = "tools/config.json"
+          $config = Get-Content $configPath | ConvertFrom-Json
+          $config.version = "${{ steps.version.outputs.VERSION }}"
+          $config | ConvertTo-Json | Set-Content $configPath
+          echo "Updated config.json version to ${{ steps.version.outputs.VERSION }}"
+
+      - name: Update version in setup.iss
+        shell: pwsh
+        run: |
+          $issPath = "setup.iss"
+          $content = Get-Content $issPath -Raw
+          $content = $content -replace '#define MyAppVersion ".*"', '#define MyAppVersion "${{ steps.version.outputs.VERSION }}"'
+          Set-Content $issPath $content
+          echo "Updated setup.iss version to ${{ steps.version.outputs.VERSION }}"
+
+      - name: Build JSX Script
+        run: node scripts/build.js
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+
+      - name: Build Installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: AutoCloneTranslationSetup.exe
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## What's New
+            - Auto-generated release from tag ${{ github.ref_name }}
+
+            ## Installation
+            Download and run `AutoCloneTranslationSetup.exe`
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

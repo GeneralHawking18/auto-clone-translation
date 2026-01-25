@@ -1,45 +1,39 @@
-HƯỚNG DẪN TẠO SETUP (BẢN LINH HOẠT)
-======================================
+# Auto Translate for Illustrator (Client App)
 
-Thư mục này chứa bộ source để đóng gói installer có tính năng update linh hoạt.
-C:\Users\Gener\Documents\scripts\Installer_Flex
+Đây là Client Script chạy trên Adobe Illustrator, kết nối với Python Backend để thực hiện dịch thuật tự động.
 
-CÁC BƯỚC THỰC HIỆN:
--------------------
+## Cấu Trúc Thư Mục
+*   `src/`: Mã nguồn chính (theo Clean Architecture).
+*   `scripts/`: Chứa `build.js` để đóng gói code.
+*   `dist/`: Chứa file `.jsx` đã đóng gói (kết quả build).
 
-BƯỚC 1: CHUẨN BỊ FILE CÒN THIẾU
-1. Copy file Action "Auto Clone From Sheet.aia" vào đây.
-   (Lấy từ Illustrator > Save Actions...)
+## Hướng Dẫn Sử Dụng
 
-CƠ CHẾ HOẠT ĐỘNG:
-1. Installer copy Script và Action vào máy.
-2. Tự động chạy script Load Action.
-3. Hiện thông báo yêu cầu người dùng khởi động lại Illustrator.
+### 1. Yêu Cầu
+*   **Node.js**: Cần cài để chạy script build (không cần cho Illustrator).
+*   **Python Backend**: Phải đang chạy (xem folder `../backend`).
 
-LƯU Ý: 
-- Người dùng cần khởi động lại Illustrator 1 lần để Menu Script được cập nhật.
-- Sau khi khởi động lại, phím tắt sẽ hoạt động bình thường.
-- Đây là cách cài đặt an toàn nhất, không làm mất dữ liệu của người dùng.
+### 2. Cách Build code
+Mỗi khi bạn sửa code trong `src/`, bạn cần "build" lại thành một file `.jsx` duy nhất.
 
-BƯỚC 2: BUILD SETUP.EXE
-1. Mở file "setup.iss" bằng Inno Setup.
-2. Bấm nút BUILD (tam giác xanh).
-3. Xong! File "AutoFillSetup.exe" sẽ xuất hiện.
+1.  Mở Terminal tại thư mục `app`.
+2.  Chạy lệnh:
+    ```bash
+    node scripts/build.js
+    ```
+3.  Kết quả sẽ nằm tại: `dist/AutoCloneTranslate.jsx`.
+
+### 3. Cách Chạy trên Illustrator
+1.  Bật **Backend Server** trước (`backend/run.bat`).
+2.  Mở Adobe Illustrator.
+3.  Vẽ một vài Text Frames và **Chọn chúng (Select)**.
+4.  Vào menu: `File` -> `Scripts` -> `Other Script...` (Ctrl+F12).
+5.  Tìm và chọn file `app/dist/AutoCloneTranslate.jsx`.
+6.  Giao diện sẽ hiện ra. Chọn ngôn ngữ và bấm **PROCEED**.
+
+### 4. Debugging
+*   Script sử dụng `curl` để gọi API. Đảm bảo Windows của bạn có thể chạy `curl` từ CMD.
+*   Nếu không thấy UI hiện ra, kiểm tra xem bạn đã chọn Text nào chưa.
 
 ---
-
-TÍNH NĂNG:
-- Khi cài xong, Script sẽ TỰ ĐỘNG mở Illustrator lên để load Action vào.
-- Bạn sẽ thấy thông báo "Action loaded successfully".
-- Sau đó hiện thông báo "Cài đặt thành công".
-
-LƯU Ý QUAN TRỌNG:
-- Lúc cài đặt, nếu Illustrator đang tắt --> Nó sẽ tự bật lên.
-- Nếu Illustrator đang bật --> Nó sẽ tự dùng luôn.
-- Đây là tính năng tự động giúp khách hàng không phải load tay thủ công.
-
-CÁCH CẤU HÌNH UPDATE SAU NÀY:
-- Bạn không cần build lại setup.exe.
-- Sau khi cài, file "config.ini" nằm trong: 
-  "C:\Program Files (x86)\AutoFill For Illustrator" (hoặc Program Files)
-- Bạn chỉ cần bảo người dùng mở file đó ra, sửa dòng "UpdateURL" là xong.
+**Lưu ý**: Để tiện lợi, bạn nên tạo Action trong Illustrator để gán phím tắt cho việc chạy Script này.

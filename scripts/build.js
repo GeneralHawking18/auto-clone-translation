@@ -1,71 +1,68 @@
 const fs = require('fs');
 const path = require('path');
 
-// Adjusted paths for Build Script in /scripts/ folder
-const SRC_DIR = path.join(__dirname, '../src');
+const SOURCE_DIR = path.join(__dirname, '../src');
 const DIST_DIR = path.join(__dirname, '../dist');
-const OUTPUT_FILE = path.join(DIST_DIR, 'AutoFillFromSheet.jsx');
+const OUTPUT_FILE = path.join(DIST_DIR, 'AutoCloneTranslate.jsx');
 
-// Ensure dist folder exists
-if (!fs.existsSync(DIST_DIR)) {
-    fs.mkdirSync(DIST_DIR, { recursive: true });
-}
-
-// Define the exact order of files (Relative to SRC_DIR)
-// Order: Core → Domain → Application → Infrastructure → Presentation → Main
+// Order is important!
 const FILES = [
-    // 1. Core
-    'core/config/config.js',
-    'core/utils/common_utils.js',
+    // Utils & Core
+    'utils/json2.js',
+    'utils/AppUtils.js',
 
-    // 2. Domain (Entities)
-    'features/data_import/domain/entities/csv_row.js',
-    'features/font_manager/domain/entities/font_info.js',
-    'features/template_engine/domain/entities/template_group.js',
+    // Feature: Extractor
+    'features/extractor/domain/TextItem.js',
+    'features/extractor/infrastructure/AdobeSelectionRepository.js',
+    'features/extractor/application/ExtractSelectedTextUseCase.js',
+    'features/extractor/presentation/TextListView.js',
 
-    // 3. Application (Interfaces)
-    'features/data_import/application/interfaces/data_reader.js',
-    'features/font_manager/application/interfaces/font_repository.js',
-    'features/template_engine/application/interfaces/template_service.js',
+    // Feature: Font Manager
+    'features/font/domain/entities/FontInfo.js',
+    'features/font/infrastructure/FontService.js',
+    'features/font/application/FontDiscoveryUseCase.js',
+    'features/font/presentation/FontSelectorView.js',
 
-    // 4. Infrastructure (Implementations)
-    'features/data_import/infrastructure/clipboard_service.js',
-    'features/data_import/infrastructure/csv_service.js',
-    'features/font_manager/infrastructure/font_service.js',
-    'features/template_engine/infrastructure/ai_service.js',
+    // Feature: Cloner (Clean Architecture)
+    'features/cloner/domain/CloneConfig.js',
+    'features/cloner/domain/TranslationTarget.js',
+    'features/cloner/domain/ILayerRepository.js',
+    'features/cloner/infrastructure/AdobeLayerRepository.js',
+    'features/cloner/application/ApplyTranslationsUseCase.js',
+    'features/cloner/presentation/ClonerController.js',
 
-    // 5. Presentation
-    'features/ui/presentation/main_dialog.js',
+    // Feature: Translator
+    'features/translator/infrastructure/PythonBackendAdapter.js',
+    'features/translator/application/SubmitTranslationUseCase.js',
+    'features/translator/presentation/MainTranslatorDialog.js',
 
-    // 6. Main Entry
-    'main.jsx'
+    // App Entry
+    'host_app.jsx'
 ];
 
-function build() {
-    console.log('🚀 Starting Build Process...');
-    let content = '// Auto-Generated File via build.js\n// DO NOT EDIT DIRECTLY\n\n';
+function bundle() {
+    if (!fs.existsSync(DIST_DIR)) {
+        fs.mkdirSync(DIST_DIR);
+    }
 
-    FILES.forEach(relativePath => {
-        const fullPath = path.join(SRC_DIR, relativePath);
-        if (fs.existsSync(fullPath)) {
-            console.log(`   + Included: ${relativePath}`);
-            const fileContent = fs.readFileSync(fullPath, 'utf8');
-            content += `\n// ==========================================\n// FILE: ${relativePath}\n// ==========================================\n`;
-            content += fileContent + '\n';
+    let content = "/** Auto-Generated Build - Do Not Edit */\n\n";
+
+    FILES.forEach(file => {
+        const filePath = path.join(SOURCE_DIR, file);
+        if (fs.existsSync(filePath)) {
+            console.log(`Bundling: ${file}`);
+            const text = fs.readFileSync(filePath, 'utf8');
+            // Basic cleanup: remove #include lines as we interpret them differently here
+            const cleanText = text.replace(/^\/\/\s*#include.*$/gm, '// included by build');
+            content += `\n/* --- ${file} --- */\n`;
+            content += cleanText + "\n";
         } else {
-            console.warn(`   ⚠️  WARNING: File not found: ${relativePath}`);
-            content += `\n// MISSING FILE: ${relativePath}\n`;
+            console.error(`Missing file: ${filePath}`);
         }
     });
 
-    try {
-        fs.writeFileSync(OUTPUT_FILE, content, 'utf8');
-        console.log(`\n✅ Build Success! Output: ${OUTPUT_FILE}`);
-        console.log(`   Size: ${(Buffer.byteLength(content, 'utf8') / 1024).toFixed(2)} KB`);
-    } catch (e) {
-        console.error('\n❌ Build Failed:', e.message);
-        process.exit(1);
-    }
+    fs.writeFileSync(OUTPUT_FILE, content, 'utf8');
+    console.log(`Build Complete: ${OUTPUT_FILE}`);
 }
 
-build();
+bundle();
