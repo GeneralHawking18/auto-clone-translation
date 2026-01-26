@@ -23,4 +23,5 @@ desktop.ini
 ~*
 
 # Distribution files
-dist/
+dist
+

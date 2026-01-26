@@ -64,14 +64,14 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: AutoCloneTranslationSetup.exe
-          name: Release ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           body: |
             ## What's New
             - Auto-generated release from tag ${{ github.ref_name }}
 
             ## Installation
             Download and run `AutoCloneTranslationSetup.exe`
-          draft: false
-          prerelease: false
+          draft: true
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

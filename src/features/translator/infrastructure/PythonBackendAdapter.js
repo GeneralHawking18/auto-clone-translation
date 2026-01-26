@@ -3,7 +3,7 @@
  * @description Handles communication with the Python Backend Service using cURL.
  */
 var PythonBackendAdapter = {
-    baseUrl: "http://127.0.0.1:8000",
+    baseUrl: "http://192.168.11.108:8510",
 
     /**
      * Send translation request to backend
