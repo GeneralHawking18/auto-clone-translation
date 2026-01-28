@@ -34,10 +34,7 @@ echo.
 echo --- Reloading Illustrator ---
 powershell -ExecutionPolicy Bypass -File tools\ReloadAI.ps1
 
-echo.
-echo --- Loading Action into Illustrator ---
-timeout /t 3 /nobreak >nul
-powershell -ExecutionPolicy Bypass -File tools\LoadAction.ps1
+
 goto :eof
 
 :FullBuild

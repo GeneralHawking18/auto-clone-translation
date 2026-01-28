@@ -46,8 +46,8 @@ Source: "{#ToolsPath}\config.json"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\Auto Translation Clone - Check for Updates"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\CheckUpdate.ps1"""; IconFilename: "{sys}\shell32.dll"; IconIndex: 46
 
 [Run]
-; LoadAction is now called from build_installer.bat AFTER ReloadAI completes
-; This ensures Illustrator is fully started before loading actions
+[Run]
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\LoadAction.ps1"""; Flags: nowait postinstall runasoriginaluser; Description: "Load Illustrator Action"
 
 [Code]
 // Helper to find Illustrator (Improved Version)
