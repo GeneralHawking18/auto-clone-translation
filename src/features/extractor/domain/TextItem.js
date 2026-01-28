@@ -8,6 +8,7 @@ var TextItem = function (id, text, layerName, parentName) {
     this.layerName = layerName || "Unknown Layer";
     this.parentName = parentName || "No Parent";
     this.isSelected = true; // Default to selected for translation
+    this.isFontIncluded = true; // Default to apply target font (true) or keep original (false)
 };
 
 // Export method for polyfill environments if needed,

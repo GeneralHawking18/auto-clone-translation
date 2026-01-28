@@ -136,20 +136,32 @@ var MainTranslatorDialog = {
         headerGrp.orientation = "row";
         headerGrp.spacing = 10;
 
+        // Col 0: Checkbox Header (Empty or "All")
+        var h0 = headerGrp.add("statictext", undefined, "All");
+        h0.preferredSize.width = 25;
+
         // Col 1: Original Header
         var h1 = headerGrp.add("statictext", undefined, "Original Text");
         h1.preferredSize.width = this.COL_WIDTH_ORIGINAL;
         h1.graphics.font = ScriptUI.newFont("Arial", "BOLD", 12);
 
         // Dynamic Cols Headers
+        // Sử dụng LanguageConstants để lấy danh sách nhãn
+        var langLabels = LanguageConstants.getLabels();
+        var langList = LanguageConstants.getList();
+
         for (var i = 0; i < this.targetCols.length; i++) {
             (function (colIndex) {
                 var colGrp = headerGrp.add("group");
                 colGrp.orientation = "row";
                 colGrp.preferredSize.width = self.COL_WIDTH_TRANS;
 
-                var dropLang = colGrp.add("dropdownlist", undefined, ["Vietnamese", "English", "Japanese", "French", "Korean"]);
-                dropLang.selection = self.getLangIndex(self.targetCols[colIndex].langCode);
+                var dropLang = colGrp.add("dropdownlist", undefined, langLabels);
+                // Tìm index dựa trên code hiện tại hoặc default
+                var currentCode = self.targetCols[colIndex].langCode;
+                var idx = LanguageConstants.getIndexByCode(currentCode);
+                dropLang.selection = idx;
+
                 dropLang.preferredSize.width = 150;
 
                 var btnDel = colGrp.add("button", undefined, "X");
@@ -157,7 +169,11 @@ var MainTranslatorDialog = {
 
                 // Events
                 dropLang.onChange = function () {
-                    self.targetCols[colIndex].langCode = self.getLangCode(dropLang.selection.index);
+                    // Cập nhật code và name vào targetCols
+                    var selectedLang = langList[dropLang.selection.index];
+                    self.targetCols[colIndex].langCode = selectedLang.code;
+                    // Lưu ý: Backend bây giờ sẽ nhận 'name' làm target_lang, nhưng ta vẫn giữ code ở object config
+                    // Việc chuyển đổi sang name sẽ làm ở tầng Service/UseCase
                 };
                 btnDel.onClick = function () {
                     self.targetCols.splice(colIndex, 1);
@@ -169,39 +185,64 @@ var MainTranslatorDialog = {
         // --- DATA ROWS ---
         var maxRows = Math.min(this.textItems.length, 20);
         for (var r = 0; r < maxRows; r++) {
-            var item = this.textItems[r];
-            var rowGrp = gridScroll.add("group");
-            rowGrp.orientation = "row";
-            rowGrp.spacing = 10; // Match Header Spacing
+            (function (r) {
+                var item = self.textItems[r];
+                // Ensure isIncluded property exists
+                if (typeof item.isIncluded === 'undefined') item.isIncluded = true;
 
-            // Original Text Cell - Styled to be readable (not gray disabled)
-            var orgCell = rowGrp.add("group");
-            orgCell.preferredSize.width = this.COL_WIDTH_ORIGINAL;
-            orgCell.preferredSize.height = this.ROW_HEIGHT;
-            var txtOrg = orgCell.add("statictext", undefined, item.text, { truncate: "end" });
-            txtOrg.preferredSize.width = this.COL_WIDTH_ORIGINAL - 16;
-            txtOrg.graphics.foregroundColor = txtOrg.graphics.newPen(
-                txtOrg.graphics.PenType.SOLID_COLOR, [0.9, 0.85, 0.7], 1  // Warm light color
-            );
-            txtOrg.graphics.font = ScriptUI.newFont("Arial", "REGULAR", 12);
+                var rowGrp = gridScroll.add("group");
+                rowGrp.orientation = "row";
+                rowGrp.spacing = 10; // Match Header Spacing
 
-            // Trans Cells
-            for (var c = 0; c < this.targetCols.length; c++) {
-                (function (colIdx, rowItem) {
-                    var transVal = self.targetCols[colIdx].translations[rowItem.id] || "";
-                    var txtTrans = rowGrp.add("edittext", undefined, transVal);
-                    txtTrans.preferredSize.width = self.COL_WIDTH_TRANS;
-                    txtTrans.preferredSize.height = self.ROW_HEIGHT;
+                // Col 0: Checkbox
+                var chkInclude = rowGrp.add("checkbox", undefined, "");
+                chkInclude.value = item.isIncluded;
+                chkInclude.preferredSize.width = 25;
 
-                    txtTrans.onChange = function () {
-                        self.targetCols[colIdx].translations[rowItem.id] = txtTrans.text;
-                    };
-                })(c, item);
-            }
+                // Original Text Cell
+                var orgCell = rowGrp.add("group");
+                orgCell.preferredSize.width = self.COL_WIDTH_ORIGINAL;
+                orgCell.preferredSize.height = self.ROW_HEIGHT;
+                var txtOrg = orgCell.add("statictext", undefined, item.text, { truncate: "end" });
+                txtOrg.preferredSize.width = self.COL_WIDTH_ORIGINAL - 16;
+                txtOrg.graphics.font = ScriptUI.newFont("Arial", "REGULAR", 12);
+
+                // Helper to update visual state based on checkbox
+                var updateVisualState = function () {
+                    item.isIncluded = chkInclude.value;
+                    txtOrg.enabled = item.isIncluded;
+                    // Disable/Gray out content
+                    // Note: ScriptUI statictext disabled state appearance varies, but usually gray
+                };
+                updateVisualState();
+
+                chkInclude.onClick = function () {
+                    updateVisualState();
+                    // Disable translation inputs for this row
+                    // (Simpler to just re-render or let the edittext logic handle it, 
+                    // but for performance we can iterate children if needed. 
+                    // For now, visual feedback on Original Text is enough)
+                };
+
+                // Trans Cells
+                for (var c = 0; c < self.targetCols.length; c++) {
+                    (function (colIdx, rowItem) {
+                        var transVal = self.targetCols[colIdx].translations[rowItem.id] || "";
+                        var txtTrans = rowGrp.add("edittext", undefined, transVal);
+                        txtTrans.preferredSize.width = self.COL_WIDTH_TRANS;
+                        txtTrans.preferredSize.height = self.ROW_HEIGHT;
+
+                        txtTrans.onChange = function () {
+                            self.targetCols[colIdx].translations[rowItem.id] = txtTrans.text;
+                        };
+                    })(c, item);
+                }
+            })(r);
         }
 
         // Actions
         btnAddCol.onClick = function () {
+            // Default new column to English
             self.targetCols.push({ langCode: 'en', fontName: (self.fontList.length > 0 ? self.fontList[0].name : 'Arial'), translations: {} });
             self.renderCurrentStep();
         };
@@ -210,17 +251,29 @@ var MainTranslatorDialog = {
         btnMockTrans.text = "⚡ Translate via API";
 
         btnMockTrans.onClick = function () {
-            // Check if user confirmed (simple check)
-            // if (!confirm("Send data to local backend?")) return;
-
             try {
                 // Call API for each target column
                 for (var c = 0; c < self.targetCols.length; c++) {
-                    var lang = self.targetCols[c].langCode;
+                    var langCode = self.targetCols[c].langCode;
+                    // Convert Code -> Full Name for Backend
+                    var langName = LanguageConstants.getName(langCode);
 
-                    // Call Batch Translation via UseCase (which uses Adapter)
-                    // This returns map: { id: "translated text" }
-                    var resultsMap = self.coordinator.translateBatch(self.textItems, "auto", lang);
+                    // Create a subset of items that are checked (isIncluded == true)
+                    // We don't remove them from main list, just filter for API call
+                    var itemsToTranslate = [];
+                    for (var r = 0; r < self.textItems.length; r++) {
+                        if (self.textItems[r].isIncluded) {
+                            itemsToTranslate.push(self.textItems[r]);
+                        }
+                    }
+
+                    if (itemsToTranslate.length === 0) {
+                        continue;
+                    }
+
+                    // Call Batch Translation via UseCase
+                    // PASSING FULL LANGUAGE NAME HERE
+                    var resultsMap = self.coordinator.translateBatch(itemsToTranslate, "auto", langName);
 
                     // Apply to column data
                     for (var r = 0; r < self.textItems.length; r++) {
@@ -242,20 +295,22 @@ var MainTranslatorDialog = {
     // --- STEP 2: FONT UI ---
     renderStep2_Font: function (container) {
         if (typeof FontSelectorView !== 'undefined') {
-            FontSelectorView.render(container, this.textItems, this.targetCols, this.fontList);
+            // Filter out unchecked items for Step 2 View if desired, 
+            // or just let FontSelectorView handle them (display all but maybe visually dim).
+            // For now, we pass all, but FontSelectorView logic might need update if we want to hide them.
+            // Let's filter strictly for cleaner UI.
+            var activeItems = [];
+            for (var i = 0; i < this.textItems.length; i++) {
+                if (this.textItems[i].isIncluded !== false) { // Default true
+                    activeItems.push(this.textItems[i]);
+                }
+            }
+            FontSelectorView.render(container, activeItems, this.targetCols, this.fontList);
         } else {
             container.add("statictext", undefined, "Error: FontSelectorView component not loaded.");
         }
     },
 
     // Helpers
-    getLangIndex: function (code) {
-        var map = { 'vi': 0, 'en': 1, 'ja': 2, 'fr': 3, 'ko': 4 };
-        return map[code] !== undefined ? map[code] : 1;
-    },
-
-    getLangCode: function (index) {
-        var codes = ['vi', 'en', 'ja', 'fr', 'ko'];
-        return codes[index] || 'en';
-    }
+    // Removed old getLangIndex/getLangCode as we use LanguageConstants now
 };

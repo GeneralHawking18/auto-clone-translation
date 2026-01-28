@@ -26,13 +26,20 @@ call :DoBuild
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo.
-echo --- Running Installer ---
-echo Please complete the installation...
-start /wait AutoCloneTranslationSetup.exe
+echo.
+echo --- Cleaning up old Illustrator instances ---
+taskkill /IM Illustrator.exe /F 2>nul
+timeout /t 2 /nobreak >nul
 
 echo.
-echo --- Reloading Illustrator ---
-powershell -ExecutionPolicy Bypass -File tools\ReloadAI.ps1
+echo --- Running Installer (Auto-Load Action) ---
+echo Please complete the installation...
+:: Run installer and tell it to Keep Illustrator Open after loading action
+start /wait AutoCloneTranslationSetup.exe /ExtraArgs="-KeepOpen"
+
+echo.
+echo Done! Illustrator should be open with Action loaded.
+
 
 
 goto :eof

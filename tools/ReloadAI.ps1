@@ -10,7 +10,8 @@ Write-Host "Starting Illustrator..."
 try {
     $ai = New-Object -ComObject Illustrator.Application
     Write-Host "Illustrator Reloaded."
-} catch {
+}
+catch {
     # Try alternative method
     Start-Process "illustrator" -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
@@ -18,7 +19,8 @@ try {
     try {
         $ai = [System.Runtime.InteropServices.Marshal]::GetActiveObject("Illustrator.Application")
         Write-Host "Illustrator Reloaded (via GetActiveObject)."
-    } catch {
+    }
+    catch {
         Write-Host "Warning: Could not verify Illustrator started. Please check manually."
     }
 }

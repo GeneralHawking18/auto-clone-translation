@@ -71,11 +71,20 @@ var AdobeLayerRepository = (function () {
         if (sourceItem.typename !== destItem.typename) return;
 
         if (sourceItem.typename === "TextFrame") {
-            var transText = this._lookupTranslation(sourceItem, originalTextItems, translations);
+            var foundItem = this._lookupItem(sourceItem, originalTextItems);
 
-            if (transText) {
-                destItem.contents = transText;
-                this._applyFont(destItem, fontName);
+            if (foundItem) {
+                // 1. Always apply translation if available
+                var transText = (translations && translations[foundItem.id]) ? translations[foundItem.id] : null;
+                if (transText) {
+                    destItem.contents = transText;
+                }
+
+                // 2. Check if we should apply font (Default to true if undefined)
+                var shouldApplyFont = (foundItem.isFontIncluded !== false);
+                if (shouldApplyFont) {
+                    this._applyFont(destItem, fontName);
+                }
             }
 
         } else if (sourceItem.typename === "GroupItem") {
@@ -92,15 +101,12 @@ var AdobeLayerRepository = (function () {
 
     /**
      * @private
-     * Tìm translation cho một text item
+     * Tìm text item gốc dựa trên nội dung text
      */
-    repo._lookupTranslation = function (sourceItem, originalItems, translations) {
+    repo._lookupItem = function (sourceItem, originalItems) {
         for (var i = 0; i < originalItems.length; i++) {
             if (originalItems[i].text === sourceItem.contents) {
-                var foundId = originalItems[i].id;
-                if (translations && translations[foundId]) {
-                    return translations[foundId];
-                }
+                return originalItems[i];
             }
         }
         return null;

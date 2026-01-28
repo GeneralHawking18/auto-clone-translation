@@ -21,6 +21,7 @@ const FILES = [
     'features/font/domain/entities/FontInfo.js',
     'features/font/infrastructure/FontService.js',
     'features/font/application/FontDiscoveryUseCase.js',
+    'features/font/presentation/FontSearchDialog.js',
     'features/font/presentation/FontSelectorView.js',
 
     // Feature: Cloner (Clean Architecture)
@@ -32,6 +33,7 @@ const FILES = [
     'features/cloner/presentation/ClonerController.js',
 
     // Feature: Translator
+    'features/translator/domain/LanguageConstants.js',
     'features/translator/infrastructure/PythonBackendAdapter.js',
     'features/translator/application/SubmitTranslationUseCase.js',
     'features/translator/presentation/MainTranslatorDialog.js',

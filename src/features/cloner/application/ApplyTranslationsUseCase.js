@@ -50,6 +50,14 @@ var ApplyTranslationsUseCase = {
         for (var i = 0; i < targetCols.length; i++) {
             var colConfig = targetCols[i];
 
+            // Filter out unchecked items
+            var activeTextItems = [];
+            for (var k = 0; k < originalTextItems.length; k++) {
+                if (originalTextItems[k].isIncluded !== false) {
+                    activeTextItems.push(originalTextItems[k]);
+                }
+            }
+
             // A. Duplicate và position
             var clone = this.layerRepository.duplicateAndPosition(
                 templateInfo.group,
@@ -59,10 +67,11 @@ var ApplyTranslationsUseCase = {
             );
 
             // B. Thay thế text và apply font
+            // Only pass active items so others are skipped/ignored during replacement traversal
             this.layerRepository.syncTraverseAndReplace(
                 templateInfo.group,
                 clone,
-                originalTextItems,
+                activeTextItems,
                 colConfig.translations,
                 colConfig.fontName
             );

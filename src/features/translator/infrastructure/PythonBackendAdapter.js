@@ -60,8 +60,17 @@ var PythonBackendAdapter = {
 
         // Wait for response file (naive wait loop, since execute is async)
         // Max 10 seconds
-        var timeout = 100;
-        while (timeout > 0 && !resFile.exists) {
+        // Wait for response file (max 30 seconds)
+        // cURL might create the file but still be writing to it.
+        var timeout = 300;
+        while (timeout > 0) {
+            if (resFile.exists && resFile.length > 0) {
+                // Try to obtain a read lock to ensure writing is totally finished
+                if (resFile.open("r")) {
+                    resFile.close(); // It's readable, valid!
+                    break;
+                }
+            }
             $.sleep(100);
             timeout--;
         }

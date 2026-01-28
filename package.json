@@ -1,12 +1,17 @@
 {
   "name": "auto-clone-translation",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Adobe Illustrator Auto Translation Extension",
   "scripts": {
     "build": "node scripts/build.js",
     "watch": "node scripts/watch.js"
   },
-  "keywords": ["adobe", "illustrator", "translation", "automation"],
+  "keywords": [
+    "adobe",
+    "illustrator",
+    "translation",
+    "automation"
+  ],
   "author": "",
   "license": "MIT",
   "engines": {
