@@ -40,15 +40,76 @@ Source: "{#ToolsPath}\LoadAction.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ToolsPath}\SafeSaveIllustrator.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ToolsPath}\ReloadAI.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ToolsPath}\config.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ToolsPath}\ConfigEditor.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; Shortcut to Check Update in Start Menu (PowerShell)
 Name: "{group}\Auto Translation Clone - Check for Updates"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\CheckUpdate.ps1"""; IconFilename: "{sys}\shell32.dll"; IconIndex: 46
 
+; Shortcut to Settings (Edit API Key & Backend URL)
+Name: "{group}\Auto Translation Clone - Settings"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\ConfigEditor.ps1"""; IconFilename: "{sys}\shell32.dll"; IconIndex: 21
+
 [Run]
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\LoadAction.ps1"" {param:ExtraArgs|}"; Flags: nowait postinstall runasoriginaluser; Description: "Load Illustrator Action"
 
 [Code]
+var
+  ConfigPage: TInputQueryWizardPage;
+  ConfigExists: Boolean;
+
+// Kiểm tra config đã tồn tại chưa (dùng để skip wizard khi reinstall)
+// Config stored in AppData (no admin required)
+function ConfigFileExists(): Boolean;
+begin
+  Result := FileExists(ExpandConstant('{userappdata}\Auto Clone Translation\api_config.json'));
+end;
+
+// Tạo custom page cho nhập API Key và Backend URL
+// CHỈ tạo nếu chưa có config (lần đầu cài đặt)
+procedure InitializeWizard;
+begin
+  ConfigExists := ConfigFileExists();
+
+  // Chỉ tạo wizard page nếu CHƯA có config
+  if not ConfigExists then
+  begin
+    ConfigPage := CreateInputQueryPage(wpSelectDir,
+      'Connection Configuration',
+      'Enter information to connect to Translation Server',
+      'Contact Admin to get API Key. Leave Backend URL empty for default.');
+
+    // API Key (bắt buộc)
+    ConfigPage.Add('API Key:', False);
+
+    // Backend URL (tùy chọn, có default)
+    ConfigPage.Add('Backend URL:', False);
+    ConfigPage.Values[1] := 'http://192.168.11.108:8510';
+  end;
+end;
+
+// Skip wizard page nếu đã có config (reinstall/update)
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  // Nếu đã có config và đang ở trang ConfigPage thì skip
+  if ConfigExists and (ConfigPage <> nil) and (PageID = ConfigPage.ID) then
+    Result := True;
+end;
+
+// Validate: không cho Next nếu chưa nhập API Key (chỉ khi hiện wizard)
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if (not ConfigExists) and (ConfigPage <> nil) and (CurPageID = ConfigPage.ID) then
+  begin
+    if ConfigPage.Values[0] = '' then
+    begin
+      MsgBox('Please enter API Key!', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
+end;
+
 // Helper to find Illustrator (Improved Version)
 function GetIllustratorDir(Param: String): String;
 begin
@@ -101,13 +162,43 @@ begin
   end;
 end;
 
-// Note: CurStepChanged handles success message
+// Tạo file config và hiển thị thông báo hoàn tất
+// Config stored in AppData (no admin required)
+// Chỉ tạo config MỚI nếu lần đầu cài (chưa có config)
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ConfigDir: String;
+  ConfigFile: String;
+  ConfigContent: String;
 begin
   if CurStep = ssPostInstall then
   begin
-    MsgBox('Cài đặt hoàn tất!' + #13#10 + #13#10 +
-           'Action đã được tự động nạp.' + #13#10 +
-           'Bạn có thể mở Illustrator và sử dụng ngay.', mbInformation, MB_OK);
+    // Chỉ tạo config mới nếu CHƯA có (lần đầu cài đặt)
+    if not ConfigExists then
+    begin
+      // Create AppData directory if not exists
+      ConfigDir := ExpandConstant('{userappdata}\Auto Clone Translation');
+      if not DirExists(ConfigDir) then
+        ForceDirectories(ConfigDir);
+
+      ConfigFile := ConfigDir + '\api_config.json';
+      ConfigContent := '{' + #13#10 +
+        '  "apiKey": "' + ConfigPage.Values[0] + '",' + #13#10 +
+        '  "backendUrl": "' + ConfigPage.Values[1] + '"' + #13#10 +
+        '}';
+      SaveStringToFile(ConfigFile, ConfigContent, False);
+
+      MsgBox('Installation completed!' + #13#10 + #13#10 +
+             'API Key has been configured.' + #13#10 +
+             'Action has been loaded automatically.' + #13#10 +
+             'You can now open Illustrator and use it.', mbInformation, MB_OK);
+    end
+    else
+    begin
+      // Update - giữ nguyên config cũ
+      MsgBox('Update completed!' + #13#10 + #13#10 +
+             'Existing configuration preserved.' + #13#10 +
+             'Use Settings in Start Menu to make changes.', mbInformation, MB_OK);
+    end;
   end;
 end;

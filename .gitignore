@@ -24,4 +24,5 @@ desktop.ini
 
 # Distribution files
 dist
+.env
 
