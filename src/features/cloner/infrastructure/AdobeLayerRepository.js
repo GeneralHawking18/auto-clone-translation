@@ -32,10 +32,14 @@ var AdobeLayerRepository = (function () {
             }
         }
 
+        var activeArtboardIndex = doc.artboards.getActiveArtboardIndex();
+        var artboardRect = doc.artboards[activeArtboardIndex].artboardRect;
+
         return {
             group: templateGroup,
             height: templateGroup.height,
-            position: templateGroup.position
+            position: templateGroup.position,
+            artboardRect: artboardRect
         };
     };
 
@@ -44,11 +48,19 @@ var AdobeLayerRepository = (function () {
      * Duplicate một group và đặt vị trí
      */
     repo.duplicateAndPosition = function (templateGroup, config, index, langCode) {
+        var doc = app.activeDocument;
+
+        // 1. Tạo artboard mới
+        var newRect = config.calculateNewArtboardRect(index);
+        var newArtboard = doc.artboards.add(newRect);
+        newArtboard.name = langCode.toUpperCase();
+
+        // 2. Duplicate group
         var clone = templateGroup.duplicate();
         clone.name = "[" + langCode.toUpperCase() + "] " + (templateGroup.name || "Clone");
 
-        var newTop = config.calculateNewTop(index);
-        clone.position = [config.startLeft, newTop];
+        // 3. Đặt vị trí (Duy trì vị trí tương đối so với artboard mới)
+        clone.position = config.calculateNewPosition(index, templateGroup.position);
         clone.selected = true;
 
         app.redraw();
@@ -59,15 +71,15 @@ var AdobeLayerRepository = (function () {
      * @override
      * Traverse và replace text content
      */
-    repo.syncTraverseAndReplace = function (sourceItem, destItem, originalTextItems, translations, fontName) {
-        this._traverseAndReplace(sourceItem, destItem, originalTextItems, translations, fontName);
+    repo.syncTraverseAndReplace = function (sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap) {
+        this._traverseAndReplace(sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap);
     };
 
     /**
      * @private
      * Recursive traversal để match source và dest items
      */
-    repo._traverseAndReplace = function (sourceItem, destItem, originalTextItems, translations, fontName) {
+    repo._traverseAndReplace = function (sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap) {
         if (sourceItem.typename !== destItem.typename) return;
 
         if (sourceItem.typename === "TextFrame") {
@@ -81,7 +93,14 @@ var AdobeLayerRepository = (function () {
                 }
 
                 // 2. Check if we should apply font (Default to true if undefined)
-                var shouldApplyFont = (foundItem.isFontIncluded !== false);
+                // Use per-column fontAppliedMap if available, fallback to item.isFontIncluded
+                var shouldApplyFont = true;
+                if (fontAppliedMap && typeof fontAppliedMap[foundItem.id] !== 'undefined') {
+                    shouldApplyFont = fontAppliedMap[foundItem.id];
+                } else if (typeof foundItem.isFontIncluded !== 'undefined') {
+                    shouldApplyFont = foundItem.isFontIncluded;
+                }
+
                 if (shouldApplyFont) {
                     this._applyFont(destItem, fontName);
                 }

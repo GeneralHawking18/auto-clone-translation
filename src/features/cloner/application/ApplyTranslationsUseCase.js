@@ -41,9 +41,10 @@ var ApplyTranslationsUseCase = {
 
         // 3. Tạo CloneConfig
         var config = new CloneConfig(
-            10, // Margin giữa các clones (reduced từ 20 xuống 10)
+            10, // Margin giữa các clones
             templateInfo.position,
-            templateInfo.height
+            templateInfo.height,
+            templateInfo.artboardRect // Pass artboard rect for layout calculation
         );
 
         // 4. Process từng ngôn ngữ đích
@@ -73,7 +74,8 @@ var ApplyTranslationsUseCase = {
                 clone,
                 activeTextItems,
                 colConfig.translations,
-                colConfig.fontName
+                colConfig.fontName,
+                colConfig.fontAppliedMap || {}
             );
         }
 

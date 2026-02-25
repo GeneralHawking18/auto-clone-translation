@@ -56,6 +56,24 @@ var AdobeSelectionRepository = {
                         item.parent ? item.parent.name : ""
                     );
 
+                    // Extract original font information
+                    try {
+                        if (item.textRange && item.textRange.characterAttributes && item.textRange.characterAttributes.textFont) {
+                            textItem.originalFontName = item.textRange.characterAttributes.textFont.name;
+                            textItem.originalFontFamily = item.textRange.characterAttributes.textFont.family;
+                        }
+                    } catch (fontErr) {
+                        // Ignore font extraction errors
+                    }
+
+                    // Detect if text contains ideographic characters (CJK)
+                    // \u4E00-\u9FFF: CJK Unified Ideographs
+                    // \u3040-\u309F: Hiragana
+                    // \u30A0-\u30FF: Katakana
+                    // \uAC00-\uD7AF: Hangul Syllables
+                    var cjkRegex = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/;
+                    textItem.isIdeographic = cjkRegex.test(content);
+
                     // Store reference to actual object if needed for later (not serializable)
                     textItem._aiObject = item;
 

@@ -83,6 +83,14 @@ var MainTranslatorDialog = {
     handleAction: function () {
         if (this.currentStep === 1) {
             this.currentStep = 2;
+
+            // --- NEW LOGIC: Calculate font defaults before moving to Step 2 ---
+            // Moved to FontService for cleaner architecture
+            if (typeof FontService !== 'undefined' && typeof FontService.applyDefaultFontsToTargets === 'function') {
+                FontService.applyDefaultFontsToTargets(this.textItems, this.targetCols);
+            }
+            // -----------------------------------------------------------------
+
             this.renderCurrentStep();
         } else {
             this.window.close();

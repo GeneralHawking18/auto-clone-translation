@@ -9,6 +9,11 @@ var TextItem = function (id, text, layerName, parentName) {
     this.parentName = parentName || "No Parent";
     this.isSelected = true; // Default to selected for translation
     this.isFontIncluded = true; // Default to apply target font (true) or keep original (false)
+
+    // New properties for font selection logic
+    this.originalFontName = null;
+    this.originalFontFamily = null;
+    this.isIdeographic = false; // Will be set during extraction
 };
 
 // Export method for polyfill environments if needed,
