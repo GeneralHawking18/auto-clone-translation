@@ -11,7 +11,16 @@ var AdobeSelectionRepository = {
 
         if (app.documents.length === 0) return items;
 
-        var selection = app.activeDocument.selection;
+        var doc = app.activeDocument;
+        var selection = doc.selection;
+
+        // Nếu không có element nào được chọn (VD: người dùng đang ở chế độ Artboard Shift+O)
+        // tự động chọn tất cả object trên active artboard
+        if (!selection || selection.length === 0) {
+            doc.selectObjectsOnActiveArtboard();
+            selection = doc.selection;
+        }
+
         if (!selection || selection.length === 0) return items;
 
         for (var i = 0; i < selection.length; i++) {

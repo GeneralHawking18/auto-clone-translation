@@ -15,6 +15,14 @@ var AdobeLayerRepository = (function () {
     repo.groupSelection = function () {
         var doc = app.activeDocument;
         var selection = doc.selection;
+
+        // Nếu không có element nào được chọn (VD: người dùng đang ở chế độ Artboard Shift+O)
+        // tự động chọn tất cả object trên active artboard
+        if (!selection || selection.length === 0) {
+            doc.selectObjectsOnActiveArtboard();
+            selection = doc.selection;
+        }
+
         if (!selection || selection.length === 0) return null;
 
         var templateGroup = null;
@@ -95,7 +103,7 @@ var AdobeLayerRepository = (function () {
                 // 2. Check if we should apply font (Default to true if undefined)
                 // Use per-column fontAppliedMap if available, fallback to item.isFontIncluded
                 var shouldApplyFont = true;
-                if (fontAppliedMap && typeof fontAppliedMap[foundItem.id] !== 'undefined') {
+                if (fontAppliedMap && fontAppliedMap.hasOwnProperty(foundItem.id)) {
                     shouldApplyFont = fontAppliedMap[foundItem.id];
                 } else if (typeof foundItem.isFontIncluded !== 'undefined') {
                     shouldApplyFont = foundItem.isFontIncluded;
@@ -112,7 +120,7 @@ var AdobeLayerRepository = (function () {
 
             if (srcChildren.length === destChildren.length) {
                 for (var i = 0; i < srcChildren.length; i++) {
-                    this._traverseAndReplace(srcChildren[i], destChildren[i], originalTextItems, translations, fontName);
+                    this._traverseAndReplace(srcChildren[i], destChildren[i], originalTextItems, translations, fontName, fontAppliedMap);
                 }
             }
         }

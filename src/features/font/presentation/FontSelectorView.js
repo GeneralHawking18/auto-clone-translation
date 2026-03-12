@@ -6,19 +6,55 @@ var FontSelectorView = {
     // UI Constants (Matched with MainDialog)
     COL_WIDTH_ORIGINAL: 200,
     COL_WIDTH_TRANS: 200,
-    ROW_HEIGHT: 30,
 
     render: function (container, textItems, targetCols, fontList) {
-        var info = container.add("statictext", undefined, "Select Font for each Language Column:");
+        container.add("statictext", undefined, "Select Font for each Language Column:");
 
         var gridScroll = container.add("panel", undefined, "");
         gridScroll.alignChildren = ["left", "top"];
         gridScroll.alignment = ["fill", "fill"];
 
-        // --- HEADER ROW ---
+        this._renderHeaderRow(gridScroll, targetCols, fontList);
+        this._renderDataRows(gridScroll, textItems, targetCols);
+    },
+
+    /**
+     * Helper list population for the Font Dropdown
+     * @private
+     */
+    _populateDropdown: function (dropdownList, selectedName, fontList) {
+        dropdownList.removeAll();
+        var found = false;
+
+        // Always add Current Selected first
+        if (selectedName) {
+            dropdownList.add("item", selectedName);
+            dropdownList.selection = 0;
+            found = true;
+        } else {
+            dropdownList.add("item", "Arial");
+            dropdownList.selection = 0;
+        }
+
+        // Add common/top fonts or first 50
+        var limit = Math.min(fontList.length, 50);
+        for (var f = 0; f < limit; f++) {
+            var fName = fontList[f].name;
+            if (fName !== selectedName) {
+                dropdownList.add("item", fName);
+            }
+        }
+    },
+
+    /**
+     * Render the Header section (Titles, Dropdowns, Search Bottons)
+     * @private
+     */
+    _renderHeaderRow: function (gridScroll, targetCols, fontList) {
         var headerGrp = gridScroll.add("group");
         headerGrp.orientation = "row";
         headerGrp.spacing = 10;
+        var self = this;
 
         // Col 1: Original Header
         var h1 = headerGrp.add("statictext", undefined, "Font Settings >");
@@ -32,7 +68,7 @@ var FontSelectorView = {
 
                 var colGrp = headerGrp.add("group");
                 colGrp.orientation = "column";
-                colGrp.preferredSize.width = FontSelectorView.COL_WIDTH_TRANS;
+                colGrp.preferredSize.width = self.COL_WIDTH_TRANS;
                 colGrp.alignChildren = ["left", "top"];
 
                 // COMPACT HEADER: Just Language Name (Bold)
@@ -46,14 +82,14 @@ var FontSelectorView = {
                 // --- NEW ROW: Checkbox label (Header for checkboxes) ---
                 var chkHeaderRow = colGrp.add("group");
                 chkHeaderRow.orientation = "row";
-                chkHeaderRow.spacing = 0; // Match data row spacing logic
+                chkHeaderRow.spacing = 0;
 
-                var chkHeaderSpace = chkHeaderRow.add("statictext", undefined, ""); // Removed emoji to prevent encoding errors
+                var chkHeaderSpace = chkHeaderRow.add("statictext", undefined, "");
                 chkHeaderSpace.preferredSize.width = 25; // Exact width of the checkbox in data rows
 
-                var chkHeaderLabel = chkHeaderRow.add("statictext", undefined, "Apply New Font"); // English translation
+                var chkHeaderLabel = chkHeaderRow.add("statictext", undefined, "Apply New Font");
                 chkHeaderLabel.graphics.font = ScriptUI.newFont("Arial", "ITALIC", 11);
-                chkHeaderLabel.preferredSize.width = FontSelectorView.COL_WIDTH_TRANS - 25;
+                chkHeaderLabel.preferredSize.width = self.COL_WIDTH_TRANS - 25;
 
                 // --- ROW: [ Dropdown ] [ SearchBtn ] ---
                 var rowControls = colGrp.add("group");
@@ -67,32 +103,7 @@ var FontSelectorView = {
                 btnSearch.preferredSize.width = 25;
                 btnSearch.helpTip = "Search Font";
 
-                // Populate Fonts in Dropdown (Limited set)
-                var populateDropdown = function (selectedName) {
-                    fontDrop.removeAll();
-                    var found = false;
-
-                    // Always add Current Selected first
-                    if (selectedName) {
-                        fontDrop.add("item", selectedName);
-                        fontDrop.selection = 0;
-                        found = true;
-                    } else {
-                        fontDrop.add("item", "Arial");
-                        fontDrop.selection = 0;
-                    }
-
-                    // Add common/top fonts or first 50
-                    var limit = Math.min(fontList.length, 50);
-                    for (var f = 0; f < limit; f++) {
-                        var fName = fontList[f].name;
-                        if (fName !== selectedName) {
-                            fontDrop.add("item", fName);
-                        }
-                    }
-                };
-
-                populateDropdown(colConfig.fontName);
+                self._populateDropdown(fontDrop, colConfig.fontName, fontList);
 
                 // Events
                 fontDrop.onChange = function () {
@@ -106,48 +117,49 @@ var FontSelectorView = {
                         var result = FontSearchDialog.show(fontList);
                         if (result) {
                             targetCols[colIndex].fontName = result;
-                            populateDropdown(result); // Refresh dropdown with new selection
+                            self._populateDropdown(fontDrop, result, fontList); // Refresh dropdown
                         }
                     } else {
                         alert("FontSearchDialog not loaded");
                     }
                 };
-
             })(i);
         }
+    },
 
-        // --- DATA ROWS ---
+    /**
+     * Render the Data portion (Original text, Translatons text, Checkboxes)
+     * @private
+     */
+    _renderDataRows: function (gridScroll, textItems, targetCols) {
+        var self = this;
         var maxRows = Math.min(textItems.length, 20);
+
         for (var r = 0; r < maxRows; r++) {
             (function (item) {
                 var rowGrp = gridScroll.add("group");
                 rowGrp.orientation = "row";
                 rowGrp.spacing = 10;
 
-                // Checkbox All
-                // Removed global row checkbox
-
-                // Original
+                // Original Text Column
                 var txtOrg = rowGrp.add("statictext", undefined, item.text);
-                txtOrg.preferredSize.width = FontSelectorView.COL_WIDTH_ORIGINAL; // Match header width for perfect alignment
-                // Ellipsis for StaticText is automatic in some versions, but better safe
+                txtOrg.preferredSize.width = self.COL_WIDTH_ORIGINAL;
                 if (item.text.length > 30) txtOrg.text = item.text.substring(0, 27) + "...";
 
-                // Translated cells logging
+                // Translated and Checkbox columns
                 for (var c = 0; c < targetCols.length; c++) {
                     (function (colConfig) {
                         var cellGrp = rowGrp.add("group");
                         cellGrp.orientation = "row";
-                        cellGrp.preferredSize.width = FontSelectorView.COL_WIDTH_TRANS;
+                        cellGrp.preferredSize.width = self.COL_WIDTH_TRANS;
                         cellGrp.alignChildren = ["left", "center"];
                         cellGrp.spacing = 0; // Force 0 spacing to align exactly with chkHeaderRow spacing
 
-                        // Initialize the map if it doesn't exist
+                        // Default state fallback - ideally handled in FontService/UseCase, but kept here for safety
                         if (!colConfig.fontAppliedMap) {
                             colConfig.fontAppliedMap = {};
                         }
 
-                        // Determine default state: if not in map, fallback to whether source or target text is ideographic
                         if (typeof colConfig.fontAppliedMap[item.id] === 'undefined') {
                             var transValForCheck = colConfig.translations[item.id] || "";
                             var isTargetIdeographic = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(transValForCheck);
@@ -161,16 +173,18 @@ var FontSelectorView = {
                         chkGrp.preferredSize.width = 25;
                         chkGrp.alignChildren = ["left", "center"];
 
+                        // Checkbox
                         var chk = chkGrp.add("checkbox", undefined, "");
                         chk.value = colConfig.fontAppliedMap[item.id];
                         chk.helpTip = "Apply font to this text";
 
+                        // Translated text
                         var val = colConfig.translations[item.id] || "(empty)";
                         var txtTrans = cellGrp.add("statictext", undefined, val);
-                        txtTrans.preferredSize.width = FontSelectorView.COL_WIDTH_TRANS - 25; // Force exact width so next column aligns perfectly
+                        txtTrans.preferredSize.width = self.COL_WIDTH_TRANS - 25;
                         if (val.length > 25) txtTrans.text = val.substring(0, 22) + "...";
 
-                        // Toggle Logic for specific cell
+                        // Checkbox Event
                         chk.onClick = function () {
                             colConfig.fontAppliedMap[item.id] = chk.value;
                         };

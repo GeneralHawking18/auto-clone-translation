@@ -36,11 +36,19 @@ CloneConfig.prototype.calculateNewArtboardRect = function (index) {
  * @returns {Array} - Vị trí mới [x, y]
  */
 CloneConfig.prototype.calculateNewPosition = function (index, originalPosition) {
-    var height = Math.abs(this.sourceArtboardRect[3] - this.sourceArtboardRect[1]);
-    var offset = (height + this.artboardSpacing) * (index + 1);
+    // Để giữ nguyên vị trí tương đối so với artboard, ta tính khoảng cách (offset)
+    // từ vị trí gốc (originalPosition) đến góc trên cùng bên trái của source artboard.
+    var relativeX = originalPosition[0] - this.sourceArtboardRect[0];
+    var relativeY = originalPosition[1] - this.sourceArtboardRect[1];
 
-    // Di chuyển xuống dưới: Giữ nguyên X, trừ Offset khỏi Y
-    return [originalPosition[0], originalPosition[1] - offset];
+    // Tính toán tọa độ artboard mới
+    var newRect = this.calculateNewArtboardRect(index);
+
+    // Vị trí mới = Tọa độ góc trên cùng bên trái của artboard mới + offset tương đối
+    var newPositionX = newRect[0] + relativeX;
+    var newPositionY = newRect[1] + relativeY;
+
+    return [newPositionX, newPositionY];
 };
 
 

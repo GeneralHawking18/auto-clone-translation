@@ -57,7 +57,11 @@ var PythonBackendAdapter = {
             throw new Error("API Key not configured.\nPlease reinstall the extension.");
         }
 
+        // Route endpoint depending on whether contextUrl is provided
         var endpoint = this.baseUrl + "/api/translate";
+        if (job.contextUrl) {
+            endpoint = this.baseUrl + "/api/v1/translate/with-context";
+        }
 
         // Prepare payload
         var payload = {
@@ -65,6 +69,10 @@ var PythonBackendAdapter = {
             target_lang: job.targetLang,
             items: [],
         };
+        
+        if (job.contextUrl) {
+            payload.context_url = job.contextUrl;
+        }
 
         for (var i = 0; i < job.items.length; i++) {
             if (job.items[i].isSelected) {

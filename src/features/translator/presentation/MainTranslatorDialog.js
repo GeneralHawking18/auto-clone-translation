@@ -31,6 +31,7 @@ var MainTranslatorDialog = {
             translations: {}
         }];
 
+        this.contextUrl = "";
         this.currentStep = 1;
         this.buildWindow();
     },
@@ -130,6 +131,17 @@ var MainTranslatorDialog = {
         toolbar.orientation = "row";
         toolbar.add("statictext", undefined, "Languages:");
         var btnAddCol = toolbar.add("button", undefined, "+ Add Language");
+
+        // Context URL Field
+        var contextGroup = container.add("group");
+        contextGroup.orientation = "row";
+        contextGroup.alignment = ["left", "top"];
+        contextGroup.add("statictext", undefined, "Context URL (Google Sheets):");
+        var txtContextUrl = contextGroup.add("edittext", undefined, self.contextUrl);
+        txtContextUrl.preferredSize.width = 400;
+        txtContextUrl.onChange = function () {
+            self.contextUrl = txtContextUrl.text;
+        };
 
         // Mock Translate Button
         var btnMockTrans = toolbar.add("button", undefined, "⚡ Mock Translate");
@@ -260,6 +272,12 @@ var MainTranslatorDialog = {
 
         btnMockTrans.onClick = function () {
             try {
+                // Bắt buộc phải có Context URL trước khi dịch
+                if (!self.contextUrl || self.contextUrl.replace(/^\s+|\s+$/g, "") === "") {
+                    alert("Context URL (Google Sheets) is required before translating.\nThis URL points to the project glossary sheet used by the AI to ensure accurate, context-aware translations.");
+                    return;
+                }
+
                 // Call API for each target column
                 for (var c = 0; c < self.targetCols.length; c++) {
                     var langCode = self.targetCols[c].langCode;
@@ -279,9 +297,16 @@ var MainTranslatorDialog = {
                         continue;
                     }
 
-                    // Call Batch Translation via UseCase
-                    // PASSING FULL LANGUAGE NAME HERE
-                    var resultsMap = self.coordinator.translateBatch(itemsToTranslate, "auto", langName);
+                    // Call Batch Translation via UseCase command
+                    // PASSING FULL LANGUAGE NAME HERE AND CONTEXT URL
+                    var command = {
+                        textItems: itemsToTranslate,
+                        sourceLang: "auto",
+                        targetLang: langName,
+                        contextUrl: self.contextUrl
+                    };
+                    
+                    var resultsMap = self.coordinator.execute(command);
 
                     // Apply to column data
                     for (var r = 0; r < self.textItems.length; r++) {

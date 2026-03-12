@@ -38,22 +38,21 @@ var SubmitTranslationUseCase = {
     },
 
     /**
-     * Executes batch translation via Backend Adapter
-     * @param {Array} textItems - Items to translate
-     * @param {string} sourceLang - Source language code
-     * @param {string} targetLang - Target language code
+     * Executes batch translation via Backend Adapter based on a command object
+     * @param {Object} command - {textItems, sourceLang, targetLang, contextUrl}
      * @returns {Object} Translation map { id: translatedText }
      */
-    translateBatch: function (textItems, sourceLang, targetLang) {
+    execute: function (command) {
         if (!this.backendAdapter) {
             throw new Error("Backend Adapter not initialized");
         }
 
         // Prepare job
         var job = {
-            items: textItems,
-            sourceLang: sourceLang,
-            targetLang: targetLang
+            items: command.textItems,
+            sourceLang: command.sourceLang,
+            targetLang: command.targetLang,
+            contextUrl: command.contextUrl
         };
 
         // Call API
