@@ -11,6 +11,10 @@ const FILES = [
     'utils/json2.js',
     'utils/AppUtils.js',
 
+    // Shared UI
+    'shared/presentation/ui/WizardDialog.js',
+    'shared/presentation/ui/VirtualSlotGrid.js',
+
     // Feature: Extractor
     'features/extractor/domain/TextItem.js',
     'features/extractor/infrastructure/AdobeSelectionRepository.js',
@@ -22,7 +26,7 @@ const FILES = [
     'features/font/infrastructure/FontService.js',
     'features/font/application/FontDiscoveryUseCase.js',
     'features/font/presentation/FontSearchDialog.js',
-    'features/font/presentation/FontSelectorView.js',
+    'features/font/presentation/FontSelectorPanelView.js',
 
     // Feature: Cloner (Clean Architecture)
     'features/cloner/domain/CloneConfig.js',
@@ -30,13 +34,17 @@ const FILES = [
     'features/cloner/domain/ILayerRepository.js',
     'features/cloner/infrastructure/AdobeLayerRepository.js',
     'features/cloner/application/ApplyTranslationsUseCase.js',
-    'features/cloner/presentation/ClonerController.js',
 
     // Feature: Translator
     'features/translator/domain/LanguageConstants.js',
     'features/translator/infrastructure/PythonBackendAdapter.js',
-    'features/translator/application/SubmitTranslationUseCase.js',
-    'features/translator/presentation/MainTranslatorDialog.js',
+    'features/translator/infrastructure/MockBackendAdapter.js',
+    'features/translator/infrastructure/GoogleSheetAdapter.js',
+    'features/translator/application/PullSheetAndTranslateUseCase.js',
+    'features/translator/presentation/TranslatorPanelView.js',
+
+    // App Coordinator
+    'features/app/presentation/MainAppCoordinator.js',
 
     // App Entry
     'host_app.jsx'
@@ -47,7 +55,7 @@ function bundle() {
         fs.mkdirSync(DIST_DIR);
     }
 
-    let content = "/** Auto-Generated Build - Do Not Edit */\n\n";
+    let content = "\uFEFF/** Auto-Generated Build - Do Not Edit */\n\n";
 
     FILES.forEach(file => {
         const filePath = path.join(SOURCE_DIR, file);

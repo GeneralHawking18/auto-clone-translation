@@ -10,6 +10,7 @@
 
 // 1. Shared / Utils
 // #include "core/config.js"
+// #include "shared/presentation/ui/VirtualSlotGrid.js"
 
 // 2. Feature: Extractor
 // #include "features/extractor/domain/TextItem.js"
@@ -22,7 +23,10 @@
 
 // 4. Feature: Translator
 // #include "features/translator/infrastructure/PythonBackendAdapter.js"
+// #include "features/translator/infrastructure/MockBackendAdapter.js"
+// #include "features/translator/infrastructure/GoogleSheetAdapter.js"
 // #include "features/translator/application/SubmitTranslationUseCase.js"
+// #include "features/translator/application/PullSheetAndTranslateUseCase.js"
 // #include "features/translator/presentation/MainTranslatorDialog.js"
 
 
@@ -33,37 +37,27 @@
         // Extractor
         ExtractSelectedTextUseCase.init(AdobeSelectionRepository);
 
-        // Utils
-        // AppUtils is global
-
         // Font Manager
         FontService.init(AppUtils);
         FontDiscoveryUseCase.init(FontService);
 
-        // Cloner (Clean Architecture Refactor)
-        // AdobeLayerRepository is stateless infra
-        // ClonerController wires everything
-        var clonerController = ClonerController.init();
+        // Cloner
+        var clonerUseCase = ApplyTranslationsUseCase.init(AdobeLayerRepository);
 
         // Translator
-        // Initialize UseCase with BackendAdapter and ClonerController
-        SubmitTranslationUseCase.init(PythonBackendAdapter, clonerController);
-        MainTranslatorDialog.init(SubmitTranslationUseCase);
+        PythonBackendAdapter.init();
+        GoogleSheetAdapter.init();
+        PullSheetAndTranslateUseCase.init(GoogleSheetAdapter, PythonBackendAdapter);
 
-        // 2. Run Flow
-        // Step A: Extract Text
-        var textItems = ExtractSelectedTextUseCase.execute();
+        // 2. Run Flow via Coordinator
+        var appCoordinator = MainAppCoordinator.init({
+            extractUseCase: ExtractSelectedTextUseCase,
+            fontUseCase: FontDiscoveryUseCase,
+            pullTranslationUseCase: PullSheetAndTranslateUseCase,
+            cloneUseCase: clonerUseCase
+        });
 
-        if (textItems.length === 0) {
-            alert("No text found in selection! Please select objects containing text.");
-            return;
-        }
-
-        // Step B: Get Fonts
-        var fontList = FontDiscoveryUseCase.execute();
-
-        // Step C: Show UI
-        MainTranslatorDialog.show(textItems, fontList);
+        appCoordinator.start();
 
     } catch (e) {
         alert("System Error: " + e.message + "\nLine: " + e.line);

@@ -28,8 +28,8 @@ DisableFinishedPage=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; 1. Main Script -> Illustrator Presets (Cho Menu File > Scripts)
-Source: "{#DistPath}\AutoCloneTranslate.jsx"; DestDir: "{code:GetIllustratorScriptsDir}"; Flags: ignoreversion
+; 1. Main Script -> Copy to App dir temporarily, we will distribute it dynamically via [Code]
+Source: "{#DistPath}\AutoCloneTranslate.jsx"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 2. Action File -> Install to App Folder so VBS can find it easily
 Source: "{#AssetPath}\actions\Auto_Clone_Translation.aia"; DestDir: "{app}"; Flags: ignoreversion
@@ -56,50 +56,105 @@ Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -WindowStyle Hi
 var
   ConfigPage: TInputQueryWizardPage;
   ConfigExists: Boolean;
+  VersionPage: TInputOptionWizardPage;
+  FoundVersions: TStringList;
 
 // Kiểm tra config đã tồn tại chưa (dùng để skip wizard khi reinstall)
-// Config stored in AppData (no admin required)
 function ConfigFileExists(): Boolean;
 begin
   Result := FileExists(ExpandConstant('{userappdata}\Auto Clone Translation\api_config.json'));
 end;
 
-// Tạo custom page cho nhập API Key và Backend URL
-// CHỈ tạo nếu chưa có config (lần đầu cài đặt)
 procedure InitializeWizard;
+var
+  FindRec: TFindRec;
+  AdobePath, Pattern: String;
 begin
   ConfigExists := ConfigFileExists();
 
-  // Chỉ tạo wizard page nếu CHƯA có config
+  // 1. Wizard Version Selection Page
+  VersionPage := CreateInputOptionPage(wpSelectDir,
+    'Select Illustrator Versions', 'Which versions of Adobe Illustrator should the script be installed to?',
+    'The setup detected the following versions of Adobe Illustrator on your system. Please select the ones you want to install the extension for:',
+    False, False);
+
+  FoundVersions := TStringList.Create;
+
+  // Scan Program Files for Adobe Illustrator instances dynamically
+  AdobePath := ExpandConstant('{pf}\Adobe\');
+  Pattern := AdobePath + 'Adobe Illustrator *';
+  
+  if FindFirst(Pattern, FindRec) then
+  begin
+    try
+      repeat
+        if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and
+           (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+        begin
+          FoundVersions.Add(FindRec.Name);
+          VersionPage.Add(FindRec.Name);
+          VersionPage.Values[VersionPage.CheckListBox.Items.Count - 1] := True;
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+  
+  if FoundVersions.Count = 0 then
+  begin
+    VersionPage.Add('No versions of Adobe Illustrator were detected. The script might not be installed correctly.');
+  end;
+
+  // 2. Wizard Connection Configuration
   if not ConfigExists then
   begin
-    ConfigPage := CreateInputQueryPage(wpSelectDir,
+    ConfigPage := CreateInputQueryPage(VersionPage.ID,
       'Connection Configuration',
       'Enter information to connect to Translation Server',
       'Contact Admin to get API Key. Leave Backend URL empty for default.');
 
-    // API Key (bắt buộc)
     ConfigPage.Add('API Key:', False);
 
-    // Backend URL (tùy chọn, có default)
     ConfigPage.Add('Backend URL:', False);
     ConfigPage.Values[1] := 'http://192.168.11.108:8510';
   end;
 end;
 
-// Skip wizard page nếu đã có config (reinstall/update)
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
-  // Nếu đã có config và đang ở trang ConfigPage thì skip
   if ConfigExists and (ConfigPage <> nil) and (PageID = ConfigPage.ID) then
     Result := True;
 end;
 
-// Validate: không cho Next nếu chưa nhập API Key (chỉ khi hiện wizard)
 function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  I: Integer;
+  AnySelected: Boolean;
 begin
   Result := True;
+  
+  if CurPageID = VersionPage.ID then
+  begin
+    if FoundVersions.Count > 0 then
+    begin
+      AnySelected := False;
+      for I := 0 to FoundVersions.Count - 1 do
+      begin
+        if VersionPage.Values[I] then
+          AnySelected := True;
+      end;
+      
+      if not AnySelected then
+      begin
+        MsgBox('Please select at least one Adobe Illustrator version!', mbError, MB_OK);
+        Result := False;
+        Exit;
+      end;
+    end;
+  end;
+
   if (not ConfigExists) and (ConfigPage <> nil) and (CurPageID = ConfigPage.ID) then
   begin
     if ConfigPage.Values[0] = '' then
@@ -110,49 +165,27 @@ begin
   end;
 end;
 
-// Helper to find Illustrator (Improved Version)
-function GetIllustratorDir(Param: String): String;
-begin
-  // Check typical versions from newest to oldest
-  if DirExists(ExpandConstant('{pf}\Adobe\Adobe Illustrator 2026')) then
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2026')
-  else if DirExists(ExpandConstant('{pf}\Adobe\Adobe Illustrator 2025')) then
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2025')
-  else if DirExists(ExpandConstant('{pf}\Adobe\Adobe Illustrator 2024')) then
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2024')
-  else if DirExists(ExpandConstant('{pf}\Adobe\Adobe Illustrator 2023')) then
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2023')
-  else if DirExists(ExpandConstant('{pf}\Adobe\Adobe Illustrator 2022')) then
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2022')
-  else if DirExists(ExpandConstant('{pf}\Adobe\Adobe Illustrator 2021')) then
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2021')
-  else if DirExists(ExpandConstant('{pf}\Adobe\Adobe Illustrator 2020')) then
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2020')
-  else
-    Result := ExpandConstant('{pf}\Adobe\Adobe Illustrator 2026'); // Fallback
-end;
-
-function GetIllustratorScriptsDir(Param: String): String;
+// Gets the scripts preset folder for a specific Illustrator folder name
+function GetScriptsDirForFolder(FolderName: String): String;
 var
+  BaseDir: String;
   PresetPath: String;
   FindRec: TFindRec;
   Found: Boolean;
 begin
-  // Default fallback if search fails
-  Result := GetIllustratorDir('') + '\Presets\en_US\Scripts';
-  PresetPath := GetIllustratorDir('') + '\Presets\*';
+  BaseDir := ExpandConstant('{pf}\Adobe\') + FolderName;
+  Result := BaseDir + '\Presets\en_US\Scripts'; // Default fallback
+  PresetPath := BaseDir + '\Presets\*';
   Found := False;
 
-  // Inno Setup FindFirst only takes 2 arguments: Pattern and Record
   if FindFirst(PresetPath, FindRec) then
   begin
     try
       repeat
-        // Check if it is a directory and not . or ..
         if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and
            (FindRec.Name <> '.') and (FindRec.Name <> '..') then
         begin
-             Result := GetIllustratorDir('') + '\Presets\' + FindRec.Name + '\Scripts';
+             Result := BaseDir + '\Presets\' + FindRec.Name + '\Scripts';
              Found := True;
         end;
       until Found or (not FindNext(FindRec));
@@ -162,21 +195,88 @@ begin
   end;
 end;
 
-// Tạo file config và hiển thị thông báo hoàn tất
-// Config stored in AppData (no admin required)
-// Chỉ tạo config MỚI nếu lần đầu cài (chưa có config)
+// Delete script from Presets dir logic used by Uninstaller
+procedure DeleteScriptIfExist(BaseDir: String);
+var
+  PresetPath: String;
+  FindRec: TFindRec;
+  ScriptFile: String;
+begin
+  PresetPath := BaseDir + '\Presets\*';
+  if FindFirst(PresetPath, FindRec) then
+  begin
+    try
+      repeat
+        if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and
+           (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+        begin
+          ScriptFile := BaseDir + '\Presets\' + FindRec.Name + '\Scripts\AutoCloneTranslate.jsx';
+          if FileExists(ScriptFile) then
+            DeleteFile(ScriptFile);
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+end;
+
+// Triggered during uninstall
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  FindRec: TFindRec;
+  AdobePath, Pattern: String;
+begin
+  // Remove dynamically copied scripts before uninstall completes
+  if CurUninstallStep = usUninstall then
+  begin
+    AdobePath := ExpandConstant('{pf}\Adobe\');
+    Pattern := AdobePath + 'Adobe Illustrator *';
+    
+    if FindFirst(Pattern, FindRec) then
+    begin
+      try
+        repeat
+          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and
+             (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+          begin
+            DeleteScriptIfExist(AdobePath + FindRec.Name);
+          end;
+        until not FindNext(FindRec);
+      finally
+        FindClose(FindRec);
+      end;
+    end;
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  ConfigDir: String;
-  ConfigFile: String;
-  ConfigContent: String;
+  ConfigDir, ConfigFile, ConfigContent: String;
+  I: Integer;
+  SourceFile, DestFile, ScriptsDir: String;
 begin
   if CurStep = ssPostInstall then
   begin
-    // Chỉ tạo config mới nếu CHƯA có (lần đầu cài đặt)
+    // 1. Copy JSX Script to Selected Illustrator Versions
+    SourceFile := ExpandConstant('{app}\AutoCloneTranslate.jsx');
+    for I := 0 to FoundVersions.Count - 1 do
+    begin
+      if VersionPage.Values[I] then
+      begin
+        ScriptsDir := GetScriptsDirForFolder(FoundVersions[I]);
+        if ScriptsDir <> '' then
+        begin
+          if not DirExists(ScriptsDir) then ForceDirectories(ScriptsDir);
+          DestFile := ScriptsDir + '\AutoCloneTranslate.jsx';
+          FileCopy(SourceFile, DestFile, False);
+        end;
+      end;
+    end;
+
+    // 2. Setup Config
     if not ConfigExists then
     begin
-      // Create AppData directory if not exists
       ConfigDir := ExpandConstant('{userappdata}\Auto Clone Translation');
       if not DirExists(ConfigDir) then
         ForceDirectories(ConfigDir);
@@ -195,7 +295,6 @@ begin
     end
     else
     begin
-      // Update - giữ nguyên config cũ
       MsgBox('Update completed!' + #13#10 + #13#10 +
              'Existing configuration preserved.' + #13#10 +
              'Use Settings in Start Menu to make changes.', mbInformation, MB_OK);

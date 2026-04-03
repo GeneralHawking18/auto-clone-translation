@@ -4,17 +4,30 @@
  */
 var LanguageConstants = (function () {
     var SUPPORTED_LANGUAGES = [
-        { code: 'vi', name: 'Vietnamese', label: 'Vietnamese (VN)' },
-        { code: 'en', name: 'English', label: 'English (US)' }, // Using 'English' as generic or 'English (US)' based on user pref. Let's send 'English' to backend.
-        { code: 'ja', name: 'Japanese', label: 'Japanese (JP)' },
-        { code: 'zh-TW', name: 'Traditional Chinese', label: 'Traditional Chinese (TW)' },
-        { code: 'zh-HK', name: 'Traditional Chinese (Hong Kong)', label: 'Chinese (Hong Kong)' },
+        { code: 'vi', name: 'Vietnamese', label: 'Vietnamese (VI)' },
+        { code: 'en', name: 'English', label: 'English (EN)' },
+        { code: 'ja', name: 'Japanese', label: 'Japanese (JA)' },
+        { code: 'tw', name: 'Traditional Chinese (TW)', label: 'Chinese TW (TW)' },
+        { code: 'zh-tw', name: 'Traditional Chinese', label: 'Chinese TW (zh-TW)' },
+        { code: 'hk', name: 'Traditional Chinese (HK)', label: 'Chinese HK (HK)' },
+        { code: 'zh-hk', name: 'Traditional Chinese (HK)', label: 'Chinese HK (zh-HK)' },
+        { code: 'cn', name: 'Simplified Chinese', label: 'Chinese CN (CN)' },
+        { code: 'zh-cn', name: 'Simplified Chinese', label: 'Chinese CN (zh-CN)' },
         { code: 'th', name: 'Thai', label: 'Thai (TH)' },
-        { code: 'ko', name: 'Korean', label: 'Korean (KR)' },
+        { code: 'ko', name: 'Korean', label: 'Korean (KO)' },
         { code: 'id', name: 'Indonesian', label: 'Indonesian (ID)' },
         { code: 'fr', name: 'French', label: 'French (FR)' },
         { code: 'de', name: 'German', label: 'German (DE)' },
-        { code: 'uk', name: 'Ukrainian', label: 'Ukrainian (UA)' }
+        { code: 'es', name: 'Spanish', label: 'Spanish (ES)' },
+        { code: 'pt', name: 'Portuguese', label: 'Portuguese (PT)' },
+        { code: 'ru', name: 'Russian', label: 'Russian (RU)' },
+        { code: 'uk', name: 'Ukrainian', label: 'Ukrainian (UK)' },
+        { code: 'ar', name: 'Arabic', label: 'Arabic (AR)' },
+        { code: 'tr', name: 'Turkish', label: 'Turkish (TR)' },
+        { code: 'it', name: 'Italian', label: 'Italian (IT)' },
+        { code: 'nl', name: 'Dutch', label: 'Dutch (NL)' },
+        { code: 'pl', name: 'Polish', label: 'Polish (PL)' },
+        { code: 'ms', name: 'Malay', label: 'Malay (MS)' }
     ];
 
     return {
@@ -30,10 +43,16 @@ var LanguageConstants = (function () {
          * Get language name by code (fallback to code if not found)
          */
         getName: function (code) {
+            if (!code) return code;
+            var lowerCode = code.replace(/"/g, "").toLowerCase();
             for (var i = 0; i < SUPPORTED_LANGUAGES.length; i++) {
-                if (SUPPORTED_LANGUAGES[i].code === code) return SUPPORTED_LANGUAGES[i].name;
+                if (SUPPORTED_LANGUAGES[i].code.toLowerCase() === lowerCode ||
+                    SUPPORTED_LANGUAGES[i].name.toLowerCase() === lowerCode) {
+                    return SUPPORTED_LANGUAGES[i].name;
+                }
             }
-            return code;
+            // Tra ve chinh code neu khong tim thay (khong fallback ve English)
+            return code.toUpperCase();
         },
 
         /**
@@ -59,10 +78,31 @@ var LanguageConstants = (function () {
          * Get index by code
          */
         getIndexByCode: function (code) {
+            if (!code) return 0; // Default Vietnamese (index 0)
+            var lowerCode = code.replace(/"/g, "").toLowerCase();
             for (var i = 0; i < SUPPORTED_LANGUAGES.length; i++) {
-                if (SUPPORTED_LANGUAGES[i].code === code) return i;
+                if (SUPPORTED_LANGUAGES[i].code.toLowerCase() === lowerCode ||
+                    SUPPORTED_LANGUAGES[i].name.toLowerCase() === lowerCode) {
+                    return i;
+                }
             }
-            return 1; // Default to English index
+            // Khong tim thay: tra ve -1 de UI biet day la code la
+            return -1;
+        },
+
+        /**
+         * Get label string for a code - hien code goc neu khong co trong list
+         */
+        getLabelByCode: function (code) {
+            if (!code) return 'Unknown';
+            var lowerCode = code.replace(/"/g, "").toLowerCase();
+            for (var i = 0; i < SUPPORTED_LANGUAGES.length; i++) {
+                if (SUPPORTED_LANGUAGES[i].code.toLowerCase() === lowerCode ||
+                    SUPPORTED_LANGUAGES[i].name.toLowerCase() === lowerCode) {
+                    return SUPPORTED_LANGUAGES[i].label;
+                }
+            }
+            return code.toUpperCase() + ' (?)'; // Hien code goc
         }
     };
 })();

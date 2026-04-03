@@ -42,5 +42,12 @@ var ILayerRepository = {
      */
     finalize: function (templateGroup) {
         throw new Error("ILayerRepository.finalize() must be implemented");
+    },
+
+    /**
+     * Toggles Outline view mode (Ctrl+Y) cho hiệu năng tốt hơn
+     */
+    toggleOutlineMode: function () {
+        throw new Error("ILayerRepository.toggleOutlineMode() must be implemented");
     }
 };

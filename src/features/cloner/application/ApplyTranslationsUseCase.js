@@ -33,13 +33,19 @@ var ApplyTranslationsUseCase = {
             throw new Error("LayerRepository not initialized in ApplyTranslationsUseCase");
         }
 
-        // 2. Group selection thành template
+        // 2. Cache active document reference ONCE for the entire session.
+        //    Avoids re-resolving app.activeDocument on every Adobe DOM operation.
+        if (typeof this.layerRepository.setActiveDocument === 'function') {
+            this.layerRepository.setActiveDocument(app.activeDocument);
+        }
+
+        // 3. Group selection thành template
         var templateInfo = this.layerRepository.groupSelection();
         if (!templateInfo || !templateInfo.group) {
             return false;
         }
 
-        // 3. Tạo CloneConfig
+        // 4. Tạo CloneConfig
         var config = new CloneConfig(
             10, // Margin giữa các clones
             templateInfo.position,
@@ -47,40 +53,68 @@ var ApplyTranslationsUseCase = {
             templateInfo.artboardRect // Pass artboard rect for layout calculation
         );
 
-        // 4. Process từng ngôn ngữ đích
+        // 5. Filter active items and build path map ONCE (O(N) vs O(N×L))
+        var activeTextItems = [];
+        for (var k = 0; k < originalTextItems.length; k++) {
+            if (originalTextItems[k].isIncluded !== false) {
+                activeTextItems.push(originalTextItems[k]);
+            }
+        }
+        var textFramePaths = [];
+        if (typeof this.layerRepository.buildTextFramePathMap === 'function') {
+            textFramePaths = this.layerRepository.buildTextFramePathMap(templateInfo.group, activeTextItems);
+        }
+
+        // 6. Switch to Outline Mode BEFORE the clone loop.
+        //    This suppresses render overhead during batch DOM writes.
+        //    NOTE: No redraw is triggered here — the single redraw happens in finalize().
+        if (typeof this.layerRepository.toggleOutlineMode === 'function') {
+            this.layerRepository.toggleOutlineMode();
+        }
+
+        // 7. Process each target language
         for (var i = 0; i < targetCols.length; i++) {
             var colConfig = targetCols[i];
 
-            // Filter out unchecked items
-            var activeTextItems = [];
-            for (var k = 0; k < originalTextItems.length; k++) {
-                if (originalTextItems[k].isIncluded !== false) {
-                    activeTextItems.push(originalTextItems[k]);
-                }
-            }
-
-            // A. Duplicate và position
+            // A. Duplicate template and position on new artboard
+            var artboardName = colConfig.namePicture || colConfig.langCode;
             var clone = this.layerRepository.duplicateAndPosition(
                 templateInfo.group,
                 config,
                 i,
-                colConfig.langCode
+                artboardName
             );
 
-            // B. Thay thế text và apply font
-            // Only pass active items so others are skipped/ignored during replacement traversal
-            this.layerRepository.syncTraverseAndReplace(
-                templateInfo.group,
-                clone,
-                activeTextItems,
-                colConfig.translations,
-                colConfig.fontName,
-                colConfig.fontAppliedMap || {}
-            );
+            // B. Apply translations + fonts via cached path map (fast O(1) navigation)
+            if (this.layerRepository.applyTranslationsByPath) {
+                this.layerRepository.applyTranslationsByPath(
+                    clone,
+                    textFramePaths,
+                    colConfig.translations,
+                    colConfig.fontName,
+                    colConfig.fontAppliedMap || {}
+                );
+            } else {
+                // Fallback: legacy traverse-and-replace
+                this.layerRepository.syncTraverseAndReplace(
+                    templateInfo.group,
+                    clone,
+                    activeTextItems,
+                    colConfig.translations,
+                    colConfig.fontName,
+                    colConfig.fontAppliedMap || {}
+                );
+            }
         }
 
-        // 5. Finalize
-        this.layerRepository.finalize(templateInfo.group);
+        // 8. Restore Preview Mode
+        if (typeof this.layerRepository.toggleOutlineMode === 'function') {
+            this.layerRepository.toggleOutlineMode();
+        }
+
+        // 9. Finalize — deselect/ungroup template and trigger the SINGLE app.redraw()
+        //    for the entire session. All prior steps ran with rendering suppressed.
+        this.layerRepository.finalize(templateInfo.group, templateInfo.wasGroupedByCommand);
 
         return true;
     }

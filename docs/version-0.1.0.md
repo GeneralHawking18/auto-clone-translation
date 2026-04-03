@@ -1,0 +1,4 @@
+- lên kế hoạch sửa cho toi bây giờ tôi sẽ nhận vào một file sheet và sẽ tự động imoort toàn bộ các ngôn ngữ cần clone bên trong file sheet luôn, nghĩa là cái này cần phải thêm một nút để tự động kéo dữ liệu về mà tự tạo ra các bản dịch từ file sheet đó luôn.
+- bổ sung thêm các ngôn ngữ 
+- Cho phép gọi song song các phần dịch, gọi bát đồng bộ và song song
+- phần artboard sẽ được lấy theo cột "name_picture"  đặt tên theo đó, chứ không đặt tên theo tiếng nữa
