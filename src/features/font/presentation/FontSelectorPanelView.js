@@ -70,6 +70,8 @@ var FontSelectorPanelView = {
                     slot.lbl.text  = langName;
                     slot.grp.visible = true;
                     
+                    slot.drop.onChange = null;
+                    slot.search.onClick = null;
                     slot.drop.removeAll();
                     if (colData.fontName) { slot.drop.add("item", colData.fontName); }
                     else { slot.drop.add("item", "Arial"); }
@@ -129,12 +131,14 @@ var FontSelectorPanelView = {
                     if (!colData.fontAppliedMap) colData.fontAppliedMap = {};
                     if (typeof colData.fontAppliedMap[item.id] === 'undefined') {
                         var tv  = colData.translations[item.id] || "";
-                        var isIdeo = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(tv);
+                        var isIdeo = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0900-\u097F]/.test(tv);
                         colData.fontAppliedMap[item.id] = isIdeo;
                     }
 
                     var val = colData.translations[item.id] || "(empty)";
                     slot.txt.text = val.length > 22 ? val.substring(0, 19) + "..." : val;
+                    
+                    slot.chk.onClick = null;
                     slot.chk.value = colData.fontAppliedMap[item.id];
                     slot.grp.visible = true;
 

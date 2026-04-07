@@ -27,7 +27,9 @@ var LanguageConstants = (function () {
         { code: 'it', name: 'Italian', label: 'Italian (IT)' },
         { code: 'nl', name: 'Dutch', label: 'Dutch (NL)' },
         { code: 'pl', name: 'Polish', label: 'Polish (PL)' },
-        { code: 'ms', name: 'Malay', label: 'Malay (MS)' }
+        { code: 'ms', name: 'Malay', label: 'Malay (MS)' },
+        { code: 'in', name: 'Hindi', label: 'Hindi (IN)' },
+        { code: 'hi', name: 'Hindi', label: 'Hindi (HI)' }
     ];
 
     return {

@@ -93,7 +93,7 @@ var FontService = {
      */
     applyDefaultFontsToTargets: function (textItems, targetCols) {
         var defaultOriginalFontName = null;
-        var cjkRegex = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/;
+        var cjkRegex = /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0900-\u097F]/;
 
         // We process font defaults per target column because some columns may need CJK fonts while others don't.
         for (var c = 0; c < targetCols.length; c++) {
