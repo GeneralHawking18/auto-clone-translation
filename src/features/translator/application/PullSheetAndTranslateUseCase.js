@@ -43,8 +43,8 @@ var PullSheetAndTranslateUseCase = {
             );
         }
 
-        var textItems   = command.textItems || [];
-        var fontList    = command.fontList  || [];
+        var textItems = command.textItems || [];
+        var fontList = command.fontList || [];
         var fallbackFont = (fontList.length > 0) ? fontList[0].name : "Arial";
 
         // -------------------------------------------------------------- //
@@ -55,12 +55,12 @@ var PullSheetAndTranslateUseCase = {
 
         for (var c = 0; c < sheetData.configs.length; c++) {
             var conf = sheetData.configs[c];
-            
+
             // Build UI columns
             targetCols.push({
-                langCode:    conf.langCode,       
+                langCode: conf.langCode,
                 namePicture: conf.namePicture,
-                fontName:    fallbackFont,
+                fontName: "", // Trống để FontService.applyDefaultFontsToTargets tự quyết định (như NotoSans)
                 translations: {}
             });
 
@@ -94,7 +94,7 @@ var PullSheetAndTranslateUseCase = {
         // 4. Tra ve cho Presentation                                      //
         // -------------------------------------------------------------- //
         return {
-            targetCols:  targetCols,
+            targetCols: targetCols,
             responseMap: responseMapByLang
         };
     }

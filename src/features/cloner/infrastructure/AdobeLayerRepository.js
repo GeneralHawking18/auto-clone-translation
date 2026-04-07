@@ -52,7 +52,7 @@ var AdobeLayerRepository = (function () {
         if (typeof FontService !== 'undefined' && typeof FontService.findByName === 'function') {
             font = FontService.findByName(fontName);
         } else {
-            try { font = app.textFonts.getByName(fontName); } catch (e) {}
+            try { font = app.textFonts.getByName(fontName); } catch (e) { }
         }
         // Cache even null so we don't retry failed lookups
         this._fontCache[fontName] = font;
@@ -86,7 +86,15 @@ var AdobeLayerRepository = (function () {
     repo._applyFontToFrame = function (textFrame, font) {
         try {
             textFrame.textRange.characterAttributes.textFont = font;
-        } catch (e) {}
+        } catch (e) {
+            try {
+                if (textFrame.textRanges && textFrame.textRanges.length > 0) {
+                    for (var i = 0; i < textFrame.textRanges.length; i++) {
+                        textFrame.textRanges[i].characterAttributes.textFont = font;
+                    }
+                }
+            } catch (err) {}
+        }
     };
 
     /**
@@ -182,16 +190,17 @@ var AdobeLayerRepository = (function () {
      */
     repo.buildTextFramePathMap = function (templateGroup, originalTextItems) {
         var paths = [];
-        this._buildPaths(templateGroup, originalTextItems, [], paths);
+        var matchedContext = { matchedIds: {} };
+        this._buildPaths(templateGroup, originalTextItems, [], paths, matchedContext);
         return paths;
     };
 
     /**
      * @private
      */
-    repo._buildPaths = function (currentItem, originalTextItems, currentPath, paths) {
+    repo._buildPaths = function (currentItem, originalTextItems, currentPath, paths, matchedContext) {
         if (currentItem.typename === "TextFrame") {
-            var foundItem = this._lookupItem(currentItem, originalTextItems);
+            var foundItem = this._lookupItem(currentItem, originalTextItems, matchedContext);
             if (foundItem) {
                 paths.push({
                     indices: currentPath.slice(), // snapshot of current path
@@ -202,7 +211,7 @@ var AdobeLayerRepository = (function () {
             var children = currentItem.pageItems;
             for (var i = 0; i < children.length; i++) {
                 currentPath.push(i);
-                this._buildPaths(children[i], originalTextItems, currentPath, paths);
+                this._buildPaths(children[i], originalTextItems, currentPath, paths, matchedContext);
                 currentPath.pop();
             }
         }
@@ -265,18 +274,19 @@ var AdobeLayerRepository = (function () {
      * Traverse và replace text content (legacy fallback path)
      */
     repo.syncTraverseAndReplace = function (sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap) {
-        this._traverseAndReplace(sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap);
+        var matchedContext = { matchedIds: {} };
+        this._traverseAndReplace(sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap, matchedContext);
     };
 
     /**
      * @private
      * Recursive traversal để match source và dest items
      */
-    repo._traverseAndReplace = function (sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap) {
+    repo._traverseAndReplace = function (sourceItem, destItem, originalTextItems, translations, fontName, fontAppliedMap, matchedContext) {
         if (sourceItem.typename !== destItem.typename) return;
 
         if (sourceItem.typename === "TextFrame") {
-            var foundItem = this._lookupItem(sourceItem, originalTextItems);
+            var foundItem = this._lookupItem(sourceItem, originalTextItems, matchedContext);
 
             if (foundItem) {
                 var transText = (translations && translations[foundItem.id]) ? translations[foundItem.id] : null;
@@ -303,7 +313,7 @@ var AdobeLayerRepository = (function () {
 
             if (srcChildren.length === destChildren.length) {
                 for (var i = 0; i < srcChildren.length; i++) {
-                    this._traverseAndReplace(srcChildren[i], destChildren[i], originalTextItems, translations, fontName, fontAppliedMap);
+                    this._traverseAndReplace(srcChildren[i], destChildren[i], originalTextItems, translations, fontName, fontAppliedMap, matchedContext);
                 }
             }
         }
@@ -311,9 +321,21 @@ var AdobeLayerRepository = (function () {
 
     /**
      * @private
-     * Tìm text item gốc dựa trên nội dung text
+     * Tìm text item gốc dựa trên nội dung text (tránh trùng lặp với duplicate text)
      */
-    repo._lookupItem = function (sourceItem, originalItems) {
+    repo._lookupItem = function (sourceItem, originalItems, matchedContext) {
+        var ctx = matchedContext || { matchedIds: {} };
+
+        for (var i = 0; i < originalItems.length; i++) {
+            if (originalItems[i].text === sourceItem.contents) {
+                if (!ctx.matchedIds[originalItems[i].id]) {
+                    ctx.matchedIds[originalItems[i].id] = true;
+                    return originalItems[i];
+                }
+            }
+        }
+
+        // Fallback: Nếu tất cả đã bị match (hy hữu), trả về thẻ đầu tiên
         for (var i = 0; i < originalItems.length; i++) {
             if (originalItems[i].text === sourceItem.contents) {
                 return originalItems[i];
@@ -352,7 +374,7 @@ var AdobeLayerRepository = (function () {
             }
         } catch (e) {
             // Nếu ungroup thất bại, chỉ deselect
-            try { templateGroup.selected = false; } catch (e2) {}
+            try { templateGroup.selected = false; } catch (e2) { }
         }
         app.redraw();
     };
@@ -367,7 +389,7 @@ var AdobeLayerRepository = (function () {
             app.executeMenuCommand("preview");
             // Deliberately NO app.redraw() here — each redraw costs ~100-500ms
             // The final redraw happens in finalize() only.
-        } catch (e) {}
+        } catch (e) { }
     };
 
     return repo;
