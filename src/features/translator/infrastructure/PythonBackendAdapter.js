@@ -10,7 +10,7 @@ var PythonBackendAdapter = {
      * Initialize adapter - load config from installer-created file
      * @returns {PythonBackendAdapter} this
      */
-    init: function(silent) {
+    init: function (silent) {
         // Read from config file in User AppData (no admin required)
         // Windows: C:\Users\<username>\AppData\Roaming\Auto Clone Translation\api_config.json
         // Note: Folder.userData = AppData\Roaming, Folder.appData = ProgramData
@@ -69,7 +69,7 @@ var PythonBackendAdapter = {
             target_lang: job.targetLang,
             items: [],
         };
-        
+
         if (job.contextUrl) {
             payload.context_url = job.contextUrl;
         }
@@ -121,8 +121,8 @@ var PythonBackendAdapter = {
         vbsFile.close();
         vbsFile.execute();
 
-        // Wait for response file (max 30 seconds)
-        var timeout = 300;
+        // Wait for response file (max 15 seconds)
+        var timeout = 60;
         while (timeout > 0) {
             if (resFile.exists && resFile.length > 0) {
                 if (resFile.open("r")) {
@@ -272,8 +272,8 @@ var PythonBackendAdapter = {
 
         vbsFile.execute();
 
-        // 4. Polling chờ kết quả, max timeout 180s = 1800 x 100ms
-        var maxWaitLoops = 1800; // Extend to 180s due to batch translations
+        // 4. Polling chờ kết quả
+        var maxWaitLoops = 300; // max timeout 30s
         var completed = false;
 
         while (maxWaitLoops > 0) {
@@ -284,7 +284,7 @@ var PythonBackendAdapter = {
                         completed = true;
                         break;
                     }
-                } catch (errWait) {}
+                } catch (errWait) { }
             }
             $.sleep(100);
             maxWaitLoops--;
@@ -301,9 +301,9 @@ var PythonBackendAdapter = {
                 var parsedObj = JSON.parse(bodyStr);
                 if (parsedObj) {
                     if (parsedObj.detail) {
-                         if (parsedObj.detail.code === "MISSING_API_KEY" || parsedObj.detail.code === "INVALID_API_KEY") {
-                             throw new Error("Invalid API Key in Batch Mode.\nContact Admin to get a new key.");
-                         }
+                        if (parsedObj.detail.code === "MISSING_API_KEY" || parsedObj.detail.code === "INVALID_API_KEY") {
+                            throw new Error("Invalid API Key in Batch Mode.\nContact Admin to get a new key.");
+                        }
                     }
                     if (parsedObj.translations) {
                         for (var lCode in parsedObj.translations) {
@@ -328,15 +328,15 @@ var PythonBackendAdapter = {
                 }
             }
         } else {
-             // Timeout hoặc file không tồn tại
-             // Throw error but delete files first or use finally block. Since ExtendScript doesn't have finally block always cleanly, 
-             // We just duplicate cleanup here
-             for (var x = 0; x < filesToCleanup.length; x++) {
-                 if (filesToCleanup[x].exists) {
-                     filesToCleanup[x].remove();
-                 }
-             }
-             throw new Error("Batch translation timed out or failed to response. The backend server might be unresponsive or taking longer than 180 seconds.");
+            // Timeout hoặc file không tồn tại
+            // Throw error but delete files first or use finally block. Since ExtendScript doesn't have finally block always cleanly, 
+            // We just duplicate cleanup here
+            for (var x = 0; x < filesToCleanup.length; x++) {
+                if (filesToCleanup[x].exists) {
+                    filesToCleanup[x].remove();
+                }
+            }
+            throw new Error("Batch translation timed out or failed to response. The backend server might be unresponsive or taking longer than 60 seconds.");
         }
 
         // 6. Dọn dẹp File

@@ -17,15 +17,24 @@ var CloneConfig = function (margin, startPosition, templateHeight, sourceArtboar
  * @returns {Array} - [left, top, right, bottom]
  */
 CloneConfig.prototype.calculateNewArtboardRect = function (index) {
+    var width = Math.abs(this.sourceArtboardRect[2] - this.sourceArtboardRect[0]);
     var height = Math.abs(this.sourceArtboardRect[3] - this.sourceArtboardRect[1]);
-    var offset = (height + this.artboardSpacing) * (index + 1);
+    
+    var maxRows = 4; // Cứ 4 artboard (bao gồm cả gốc) thì tạo cột mới để tránh lỗi AOoC
+    var itemIndex = index + 1; // index = 0 là bản clone đầu tiên, sau bản gốc (itemIndex = 1)
+    
+    var row = itemIndex % maxRows;
+    var col = Math.floor(itemIndex / maxRows);
 
-    // Di chuyển xuống dưới: Giữ nguyên X, trừ Offset khỏi Y (top và bottom)
+    var offsetX = (width + this.artboardSpacing) * col;
+    var offsetY = (height + this.artboardSpacing) * row;
+
+    // Di chuyển theo lưới (Grid): Thêm vào X (sang cột mới), Trừ khỏi Y (xuống dòng)
     return [
-        this.sourceArtboardRect[0],
-        this.sourceArtboardRect[1] - offset,
-        this.sourceArtboardRect[2],
-        this.sourceArtboardRect[3] - offset
+        this.sourceArtboardRect[0] + offsetX,
+        this.sourceArtboardRect[1] - offsetY,
+        this.sourceArtboardRect[2] + offsetX,
+        this.sourceArtboardRect[3] - offsetY
     ];
 };
 
