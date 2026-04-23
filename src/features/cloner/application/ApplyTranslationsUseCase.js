@@ -35,25 +35,35 @@ var ApplyTranslationsUseCase = {
 
         // 2. Cache active document reference ONCE for the entire session.
         //    Avoids re-resolving app.activeDocument on every Adobe DOM operation.
+        var doc = app.activeDocument;
         if (typeof this.layerRepository.setActiveDocument === 'function') {
-            this.layerRepository.setActiveDocument(app.activeDocument);
+            this.layerRepository.setActiveDocument(doc);
         }
 
-        // 3. Group selection thành template
+        // 3. Detect canvas X limit (cached per AI version in api_config.json).
+        //    First run per version: ~300ms binary search. Subsequent runs: 0ms (cache hit).
+        var canvasXLimit = 10000; // conservative fallback
+        if (typeof this.layerRepository.getCanvasXLimit === 'function') {
+            canvasXLimit = this.layerRepository.getCanvasXLimit(doc);
+        }
+
+        // 4. Group selection thành template
         var templateInfo = this.layerRepository.groupSelection();
         if (!templateInfo || !templateInfo.group) {
             return false;
         }
 
-        // 4. Tạo CloneConfig
+        // 5. Tạo CloneConfig với adaptive grid dựa trên canvas bounds thực tế
         var config = new CloneConfig(
-            10, // Margin giữa các clones
+            10,                       // margin
             templateInfo.position,
             templateInfo.height,
-            templateInfo.artboardRect // Pass artboard rect for layout calculation
+            templateInfo.artboardRect,
+            targetCols.length,        // totalCount → tính _maxRows/_maxCols tự động
+            canvasXLimit              // giới hạn canvas thực tế của phiên bản AI hiện tại
         );
 
-        // 5. Filter active items and build path map ONCE (O(N) vs O(N×L))
+        // 6. Filter active items and build path map ONCE (O(N) vs O(N×L))
         var activeTextItems = [];
         for (var k = 0; k < originalTextItems.length; k++) {
             if (originalTextItems[k].isIncluded !== false) {
@@ -65,19 +75,18 @@ var ApplyTranslationsUseCase = {
             textFramePaths = this.layerRepository.buildTextFramePathMap(templateInfo.group, activeTextItems);
         }
 
-        // 6. Switch to Outline Mode BEFORE the clone loop.
+        // 7. Switch to Outline Mode BEFORE the clone loop.
         //    This suppresses render overhead during batch DOM writes.
         //    NOTE: No redraw is triggered here — the single redraw happens in finalize().
         if (typeof this.layerRepository.toggleOutlineMode === 'function') {
             this.layerRepository.toggleOutlineMode();
         }
 
-        // 7. Process each target language
+        // 8. Process each target language
         for (var i = 0; i < targetCols.length; i++) {
             var colConfig = targetCols[i];
-
-            // A. Duplicate template and position on new artboard
             var artboardName = colConfig.namePicture || colConfig.langCode;
+
             var clone = this.layerRepository.duplicateAndPosition(
                 templateInfo.group,
                 config,
@@ -85,7 +94,7 @@ var ApplyTranslationsUseCase = {
                 artboardName
             );
 
-            // B. Apply translations + fonts via cached path map (fast O(1) navigation)
+            // Apply translations + fonts via cached path map (fast O(1) navigation)
             if (this.layerRepository.applyTranslationsByPath) {
                 this.layerRepository.applyTranslationsByPath(
                     clone,
@@ -107,13 +116,13 @@ var ApplyTranslationsUseCase = {
             }
         }
 
-        // 8. Restore Preview Mode
+        // 9. Restore Preview Mode
         if (typeof this.layerRepository.toggleOutlineMode === 'function') {
             this.layerRepository.toggleOutlineMode();
         }
 
-        // 9. Finalize — deselect/ungroup template and trigger the SINGLE app.redraw()
-        //    for the entire session. All prior steps ran with rendering suppressed.
+        // 10. Finalize — deselect/ungroup template and trigger the SINGLE app.redraw()
+        //     for the entire session. All prior steps ran with rendering suppressed.
         this.layerRepository.finalize(templateInfo.group, templateInfo.wasGroupedByCommand);
 
         return true;

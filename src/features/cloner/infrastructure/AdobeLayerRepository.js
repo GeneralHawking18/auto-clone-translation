@@ -28,6 +28,93 @@ var AdobeLayerRepository = (function () {
     repo._fontCache = {};
 
     /**
+     * @private
+     * Canvas X-limit cache: { majorVersion: limitPt }
+     * Populated by getCanvasXLimit() on first call per AI version.
+     */
+    repo._canvasBoundsCache = null;
+
+    /**
+     * @private Path to shared config file (same as PythonBackendAdapter)
+     */
+    repo._CONFIG_PATH = Folder.userData + "/Auto Clone Translation/api_config.json";
+
+    /** @private Read api_config.json, return {} on failure */
+    repo._readConfig = function () {
+        try {
+            var f = new File(this._CONFIG_PATH);
+            if (!f.exists) return {};
+            f.open("r");
+            var content = f.read();
+            f.close();
+            return JSON.parse(content);
+        } catch (e) { return {}; }
+    };
+
+    /** @private Write api_config.json, silently ignore errors */
+    repo._writeConfig = function (config) {
+        try {
+            var f = new File(this._CONFIG_PATH);
+            f.open("w");
+            f.write(JSON.stringify(config, null, 2));
+            f.close();
+        } catch (e) { }
+    };
+
+    /**
+     * Binary-search detect the maximum safe X coordinate for artboards.
+     * Adds a tiny test artboard at mid-X, removes it immediately.
+     * @param {Object} doc
+     * @returns {number} Detected limit (pt), with 5% safety margin applied
+     */
+    repo._detectCanvasXLimit = function (doc) {
+        var lo = 0, hi = 100000, mid;
+        while (lo < hi - 1) {
+            mid = Math.floor((lo + hi) / 2);
+            try {
+                doc.artboards.add([mid, 0, mid + 1, -1]);
+                doc.artboards.remove(doc.artboards.length - 1);
+                lo = mid;
+            } catch (e) {
+                hi = mid;
+            }
+        }
+        return Math.floor(lo * 0.95); // 5% safety margin
+    };
+
+    /**
+     * Get canvas X limit for the current Illustrator version.
+     * Result is cached in api_config.json keyed by major version string.
+     * Fast path (cache hit): ~0ms. Slow path (first run per version): ~300ms.
+     * @param {Object} doc
+     * @returns {number} Canvas X limit in pt
+     */
+    repo.getCanvasXLimit = function (doc) {
+        var majorVer = app.version.split(".")[0]; // e.g. "24" for AI 2020
+
+        // In-memory cache (same session)
+        if (this._canvasBoundsCache && this._canvasBoundsCache[majorVer] !== undefined) {
+            return this._canvasBoundsCache[majorVer];
+        }
+
+        // Disk cache (persisted between sessions)
+        var config = this._readConfig();
+        if (!config.canvasBoundsCache) config.canvasBoundsCache = {};
+
+        if (config.canvasBoundsCache[majorVer] !== undefined) {
+            this._canvasBoundsCache = config.canvasBoundsCache;
+            return config.canvasBoundsCache[majorVer];
+        }
+
+        // First run: detect via binary search and persist
+        var limit = this._detectCanvasXLimit(doc);
+        config.canvasBoundsCache[majorVer] = limit;
+        this._writeConfig(config);
+        this._canvasBoundsCache = config.canvasBoundsCache;
+        return limit;
+    };
+
+    /**
      * Cache the active document reference to avoid re-resolving app.activeDocument
      * on every DOM operation (Adobe resolves this reference each time).
      * @param {Document} doc
@@ -161,23 +248,22 @@ var AdobeLayerRepository = (function () {
 
     /**
      * @override
-     * Duplicate một group và đặt vị trí
+     * Duplicate một group và đặt vị trí trên artboard mới.
      */
     repo.duplicateAndPosition = function (templateGroup, config, index, artboardName) {
         var doc = this._doc || app.activeDocument;
+        var safeName = artboardName ? artboardName : "Artboard " + (index + 2);
 
         // 1. Tạo artboard mới
         var newRect = config.calculateNewArtboardRect(index);
         var newArtboard = doc.artboards.add(newRect);
-
-        var safeName = artboardName ? artboardName : "Artboard " + (index + 2);
         newArtboard.name = safeName;
 
         // 2. Duplicate group
         var clone = templateGroup.duplicate();
         clone.name = "[" + safeName + "] " + (templateGroup.name || "Clone");
 
-        // 3. Đặt vị trí (Duy trì vị trí tương đối so với artboard mới)
+        // 3. Đặt vị trí (duy trì vị trí tương đối so với artboard mới)
         clone.position = config.calculateNewPosition(index, templateGroup.position);
 
         return clone;

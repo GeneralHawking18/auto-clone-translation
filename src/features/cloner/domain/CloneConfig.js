@@ -2,34 +2,67 @@
  * @class CloneConfig
  * @description Value Object chứa cấu hình cho việc clone và positioning.
  */
-var CloneConfig = function (margin, startPosition, templateHeight, sourceArtboardRect) {
+
+/**
+ * @param {number} margin
+ * @param {Array} startPosition - [x, y] của template gốc
+ * @param {number} templateHeight
+ * @param {Array} sourceArtboardRect - [left, top, right, bottom]
+ * @param {number} totalCount - Tổng số clone cần tạo
+ * @param {number} canvasXLimit - Giới hạn canvas X (pt), lấy từ AdobeLayerRepository.getCanvasXLimit()
+ */
+var CloneConfig = function (margin, startPosition, templateHeight, sourceArtboardRect, totalCount, canvasXLimit) {
     this.margin = (typeof margin === 'number') ? margin : 10;
     this.startLeft = startPosition[0];
     this.startTop = startPosition[1];
     this.templateHeight = templateHeight;
     this.sourceArtboardRect = sourceArtboardRect; // [left, top, right, bottom]
-    this.artboardSpacing = 300; // Tăng khoảng cách giữa các artboard
+    this.artboardSpacing = 300;
+
+    totalCount    = totalCount    || 1;
+    canvasXLimit  = canvasXLimit  || 10000; // fallback bảo thủ
+
+    var srcLeft = sourceArtboardRect[0];
+    var srcTop  = sourceArtboardRect[1]; // top edge (lớn hơn bottom trong AI coords)
+    var artW    = Math.abs(sourceArtboardRect[2] - sourceArtboardRect[0]);
+    var artH    = Math.abs(sourceArtboardRect[3] - sourceArtboardRect[1]);
+    var sp      = this.artboardSpacing;
+
+    // --- Tính số cột tối đa trong giới hạn X ---
+    // Cột 0 = artboard gốc, cột 1+ = clone
+    // right edge của cột N = srcLeft + artW + (artW + sp) * N ≤ canvasXLimit
+    var availableX   = canvasXLimit - srcLeft - artW;
+    var maxExtraCols = Math.max(0, Math.floor(availableX / (artW + sp)));
+    var maxCols      = maxExtraCols + 1; // cột 0 = nguồn, clone từ cột 1
+
+    // --- Tính số hàng tối đa trong giới hạn Y (trục Y âm = xuống dưới) ---
+    // bottom edge của hàng R = srcTop - (artH + sp) * R ≥ -canvasXLimit
+    var availableY   = canvasXLimit + srcTop; // srcTop thường ≥ 0
+    var maxRowsFromY = Math.max(1, Math.floor(availableY / (artH + sp)));
+
+    // --- Phân bổ tối ưu: chia đều totalCount cho các cột ---
+    var idealRows    = Math.ceil(totalCount / maxCols);
+    this._maxRows    = Math.min(Math.max(1, idealRows), maxRowsFromY);
+    this._maxCols    = Math.ceil(totalCount / this._maxRows);
 };
 
 /**
- * Tính toán tọa độ cho artboard mới tại index (Theo chiều dọc)
+ * Tính toán tọa độ cho artboard mới tại index
+ * Grid layout adaptive — maxRows/maxCols được tính từ canvas bounds trong constructor.
  * @param {number} index - 0-based index
  * @returns {Array} - [left, top, right, bottom]
  */
 CloneConfig.prototype.calculateNewArtboardRect = function (index) {
-    var width = Math.abs(this.sourceArtboardRect[2] - this.sourceArtboardRect[0]);
+    var width  = Math.abs(this.sourceArtboardRect[2] - this.sourceArtboardRect[0]);
     var height = Math.abs(this.sourceArtboardRect[3] - this.sourceArtboardRect[1]);
-    
-    var maxRows = 4; // Cứ 4 artboard (bao gồm cả gốc) thì tạo cột mới để tránh lỗi AOoC
-    var itemIndex = index + 1; // index = 0 là bản clone đầu tiên, sau bản gốc (itemIndex = 1)
-    
-    var row = itemIndex % maxRows;
-    var col = Math.floor(itemIndex / maxRows);
 
-    var offsetX = (width + this.artboardSpacing) * col;
+    var itemIndex = index + 1; // bỏ qua artboard gốc
+    var row = itemIndex % this._maxRows;
+    var col = Math.floor(itemIndex / this._maxRows);
+
+    var offsetX = (width  + this.artboardSpacing) * col;
     var offsetY = (height + this.artboardSpacing) * row;
 
-    // Di chuyển theo lưới (Grid): Thêm vào X (sang cột mới), Trừ khỏi Y (xuống dòng)
     return [
         this.sourceArtboardRect[0] + offsetX,
         this.sourceArtboardRect[1] - offsetY,
@@ -37,6 +70,7 @@ CloneConfig.prototype.calculateNewArtboardRect = function (index) {
         this.sourceArtboardRect[3] - offsetY
     ];
 };
+
 
 /**
  * Tính toán vị trí mới cho clone dựa trên artboard offset (Theo chiều dọc)
