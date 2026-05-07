@@ -61,7 +61,8 @@ var PullSheetAndTranslateUseCase = {
                 langCode: conf.langCode,
                 namePicture: conf.namePicture,
                 fontName: "", // Trống để FontService.applyDefaultFontsToTargets tự quyết định (như NotoSans)
-                translations: {}
+                translations: {},
+                rowId: conf.rowId
             });
 
             // Lấy tên ngôn ngữ dài cho target_lang
@@ -77,6 +78,7 @@ var PullSheetAndTranslateUseCase = {
                 sourceLang: "auto",
                 targetLang: targetLangName,
                 langCode: conf.langCode,
+                rowId: conf.rowId,
                 contextUrl: command.contextUrl,
                 items: textItems
             });
@@ -86,16 +88,41 @@ var PullSheetAndTranslateUseCase = {
         // 3. Ban API dong thoi lay ket qua (ResponseMap)                  //
         // -------------------------------------------------------------- //
         var responseMapByLang = {};
+        var pivotImageName = "";
         if (translationJobs.length > 0) {
-            responseMapByLang = this.backendAdapter.translateBatchParallel(translationJobs);
+            var batchResult = this.backendAdapter.translateBatchParallel(translationJobs);
+            responseMapByLang = batchResult.responseMap;
+            pivotImageName = batchResult.pivotImageName || "";
         }
 
         // -------------------------------------------------------------- //
         // 4. Tra ve cho Presentation                                      //
         // -------------------------------------------------------------- //
+
+        // Bỏ cột nguồn (source language row): server không trả translation
+        // → responseMapByLang[rowId] sẽ là {} rỗng.
+        // Chỉ giữ cột nào thực sự có dữ liệu dịch.
+        // NOTE: dùng for-in thay Object.keys vì ExtendScript là ES3
+        var validTargetCols = [];
+        for (var v = 0; v < targetCols.length; v++) {
+            var col = targetCols[v];
+            var key = col.rowId ? col.rowId.toString() : col.langCode;
+            var colData = responseMapByLang[key];
+            var hasData = false;
+            if (colData) {
+                for (var k in colData) {
+                    if (colData.hasOwnProperty(k)) { hasData = true; break; }
+                }
+            }
+            if (hasData) {
+                validTargetCols.push(col);
+            }
+        }
+
         return {
-            targetCols: targetCols,
-            responseMap: responseMapByLang
+            targetCols: validTargetCols,
+            responseMap: responseMapByLang,
+            pivotImageName: pivotImageName
         };
     }
 };

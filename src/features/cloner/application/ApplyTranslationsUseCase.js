@@ -21,9 +21,10 @@ var ApplyTranslationsUseCase = {
      * Thực thi use case: Clone và apply translations cho nhiều ngôn ngữ
      * @param {Array} originalTextItems - Danh sách text items gốc { id, text }
      * @param {Array} targetCols - Cấu hình các cột đích { langCode, translations, fontName }
+     * @param {string} [pivotImageName] - Tên ảnh của artboard gốc (pivot) để đặt tên artboard nguồn
      * @returns {boolean} true nếu thành công
      */
-    execute: function (originalTextItems, targetCols) {
+    execute: function (originalTextItems, targetCols, pivotImageName) {
         // 1. Validate inputs
         if (!targetCols || targetCols.length === 0) {
             return false;
@@ -47,13 +48,19 @@ var ApplyTranslationsUseCase = {
             canvasXLimit = this.layerRepository.getCanvasXLimit(doc);
         }
 
-        // 4. Group selection thành template
+        // 4. Đặt tên artboard gốc (pivot) theo tên ảnh từ Sheet
+        //    Nếu có pivotImageName, rename active artboard trước khi bắt đầu clone.
+        if (pivotImageName && typeof this.layerRepository.renameActiveArtboard === 'function') {
+            this.layerRepository.renameActiveArtboard(doc, pivotImageName);
+        }
+
+        // 5. Group selection thành template
         var templateInfo = this.layerRepository.groupSelection();
         if (!templateInfo || !templateInfo.group) {
             return false;
         }
 
-        // 5. Tạo CloneConfig với adaptive grid dựa trên canvas bounds thực tế
+        // 6. Tạo CloneConfig với adaptive grid dựa trên canvas bounds thực tế
         var config = new CloneConfig(
             10,                       // margin
             templateInfo.position,
@@ -63,7 +70,7 @@ var ApplyTranslationsUseCase = {
             canvasXLimit              // giới hạn canvas thực tế của phiên bản AI hiện tại
         );
 
-        // 6. Filter active items and build path map ONCE (O(N) vs O(N×L))
+        // 7. Filter active items and build path map ONCE (O(N) vs O(N×L))
         var activeTextItems = [];
         for (var k = 0; k < originalTextItems.length; k++) {
             if (originalTextItems[k].isIncluded !== false) {
@@ -75,14 +82,14 @@ var ApplyTranslationsUseCase = {
             textFramePaths = this.layerRepository.buildTextFramePathMap(templateInfo.group, activeTextItems);
         }
 
-        // 7. Switch to Outline Mode BEFORE the clone loop.
+        // 8. Switch to Outline Mode BEFORE the clone loop.
         //    This suppresses render overhead during batch DOM writes.
         //    NOTE: No redraw is triggered here — the single redraw happens in finalize().
         if (typeof this.layerRepository.toggleOutlineMode === 'function') {
             this.layerRepository.toggleOutlineMode();
         }
 
-        // 8. Process each target language
+        // 9. Process each target language
         for (var i = 0; i < targetCols.length; i++) {
             var colConfig = targetCols[i];
             var artboardName = colConfig.namePicture || colConfig.langCode;
@@ -116,12 +123,12 @@ var ApplyTranslationsUseCase = {
             }
         }
 
-        // 9. Restore Preview Mode
+        // 10. Restore Preview Mode
         if (typeof this.layerRepository.toggleOutlineMode === 'function') {
             this.layerRepository.toggleOutlineMode();
         }
 
-        // 10. Finalize — deselect/ungroup template and trigger the SINGLE app.redraw()
+        // 11. Finalize — deselect/ungroup template and trigger the SINGLE app.redraw()
         //     for the entire session. All prior steps ran with rendering suppressed.
         this.layerRepository.finalize(templateInfo.group, templateInfo.wasGroupedByCommand);
 

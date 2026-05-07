@@ -200,7 +200,7 @@ var GoogleSheetAdapter = {
 
             var namePicture = parts.length > 1 ? parts[1].replace(/^\s+|\s+$/g, "") : "";
 
-            configs.push({ langCode: langCode, namePicture: namePicture });
+            configs.push({ langCode: langCode, namePicture: namePicture, rowId: i + 1 });
         }
 
         return {

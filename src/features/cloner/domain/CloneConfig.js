@@ -40,10 +40,12 @@ var CloneConfig = function (margin, startPosition, templateHeight, sourceArtboar
     var availableY   = canvasXLimit + srcTop; // srcTop thường ≥ 0
     var maxRowsFromY = Math.max(1, Math.floor(availableY / (artH + sp)));
 
-    // --- Phân bổ tối ưu: chia đều totalCount cho các cột ---
-    var idealRows    = Math.ceil(totalCount / maxCols);
+    // --- Phân bổ tối ưu: chia đều tổng số lượng cho các cột ---
+    // Sửa lỗi (off-by-one): tính cả artboard gốc vào tổng dung lượng lưới
+    var totalItems   = totalCount + 1;
+    var idealRows    = Math.ceil(totalItems / maxCols);
     this._maxRows    = Math.min(Math.max(1, idealRows), maxRowsFromY);
-    this._maxCols    = Math.ceil(totalCount / this._maxRows);
+    this._maxCols    = Math.ceil(totalItems / this._maxRows);
 };
 
 /**

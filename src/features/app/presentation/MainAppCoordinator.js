@@ -52,7 +52,7 @@ var MainAppCoordinator = {
                 } else if (self.currentStep === 2) {
                     self.wizard.close();
                     try {
-                        self.cloneUseCase.execute(self.textItems, self.targetCols);
+                        self.cloneUseCase.execute(self.textItems, self.targetCols, self.pivotImageName || "");
                         var totalLangs = self.targetCols.length;
                         alert("Success! Created clones for " + totalLangs + " language(s).");
                     } catch (e) {

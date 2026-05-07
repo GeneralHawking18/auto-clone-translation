@@ -170,9 +170,11 @@ var TranslatorPanelView = {
                 });
 
                 coordinatorState.targetCols = result.targetCols;
+                coordinatorState.pivotImageName = result.pivotImageName || "";
 
                 for (var c = 0; c < coordinatorState.targetCols.length; c++) {
-                    var cCode  = coordinatorState.targetCols[c].langCode;
+                    var col = coordinatorState.targetCols[c];
+                    var cCode = coordinatorState.contextUrl && col.rowId ? col.rowId.toString() : col.langCode;
                     var resMap = result.responseMap[cCode];
                     if (resMap) {
                         for (var ri = 0; ri < coordinatorState.textItems.length; ri++) {

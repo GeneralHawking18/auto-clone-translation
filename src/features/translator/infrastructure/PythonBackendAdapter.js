@@ -3,7 +3,7 @@
  * @description Handles communication with the Python Backend Service using cURL.
  */
 var PythonBackendAdapter = {
-    baseUrl: "http://192.168.11.108:8510",
+    baseUrl: "http://localhost:8510",
     apiKey: null,
 
     /**
@@ -44,135 +44,6 @@ var PythonBackendAdapter = {
     },
 
     /**
-     * Send translation request to backend
-     * @param {TranslationJob} job
-     * @returns {Object} Response JSON
-     */
-    translate: function (job) {
-        // Auto-reload config before each API call (allows hot-reload without restart)
-        this.init(true);
-
-        // Check API key (entered during installation)
-        if (!this.apiKey) {
-            throw new Error("API Key not configured.\nPlease reinstall the extension.");
-        }
-
-        // Route endpoint depending on whether contextUrl is provided
-        var endpoint = this.baseUrl + "/api/translate";
-        if (job.contextUrl) {
-            endpoint = this.baseUrl + "/api/v1/translate/with-context";
-        }
-
-        // Prepare payload
-        var payload = {
-            source_lang: job.sourceLang,
-            target_lang: job.targetLang,
-            items: [],
-        };
-
-        if (job.contextUrl) {
-            payload.context_url = job.contextUrl;
-        }
-
-        for (var i = 0; i < job.items.length; i++) {
-            if (job.items[i].isSelected) {
-                var layerName = job.items[i].layerName || "";
-                var isBtn = layerName.toLowerCase().indexOf('btn') > -1 || layerName.toLowerCase().indexOf('button') > -1;
-                payload.items.push({
-                    id: job.items[i].id,
-                    text: job.items[i].text,
-                    layer_name: layerName,
-                    is_button: isBtn
-                });
-            }
-        }
-
-        // Create temp files for request/response
-        var tempFolder = Folder.temp;
-        var timestamp = new Date().getTime();
-        var reqFile = new File(tempFolder + "/req_" + timestamp + ".json");
-        var resFile = new File(tempFolder + "/res_" + timestamp + ".json");
-
-        // Write JSON payload
-        reqFile.open("w");
-        reqFile.encoding = "UTF-8";
-        reqFile.write(JSON.stringify(payload));
-        reqFile.close();
-
-        // Build cURL command WITH API KEY HEADER
-        var cmd = 'curl -s -X POST "' + endpoint + '"';
-        cmd += ' -H "Content-Type: application/json"';
-        cmd += ' -H "X-API-Key: ' + this.apiKey + '"';
-        cmd += ' -d "@' + reqFile.fsName + '"';
-        cmd += ' -o "' + resFile.fsName + '"';
-
-        // Execute via batch file (Illustrator ExtendScript limitation)
-        var batFile = new File(tempFolder + "/req_" + timestamp + ".bat");
-        batFile.open("w");
-        batFile.write('@echo off\n');
-        batFile.write(cmd);
-        batFile.close();
-
-        // Chay ngam qua VBS (an cua so CMD)
-        var vbsFile = new File(tempFolder + "/req_silent_" + timestamp + ".vbs");
-        vbsFile.open("w");
-        vbsFile.write('Set WshShell = CreateObject("WScript.Shell")\n');
-        vbsFile.write('WshShell.Run chr(34) & "' + batFile.fsName + '" & chr(34), 0, False\n');
-        vbsFile.close();
-        vbsFile.execute();
-
-        // Wait for response file (max 15 seconds)
-        var timeout = 60;
-        while (timeout > 0) {
-            if (resFile.exists && resFile.length > 0) {
-                if (resFile.open("r")) {
-                    resFile.close();
-                    break;
-                }
-            }
-            $.sleep(100);
-            timeout--;
-        }
-
-        batFile.remove();
-        if (vbsFile && vbsFile.exists) vbsFile.remove();
-
-        // Read response
-        var result = null;
-        if (resFile.exists) {
-            resFile.open("r");
-            resFile.encoding = "UTF-8";
-            var content = resFile.read();
-            resFile.close();
-
-            try {
-                result = JSON.parse(content);
-
-                // Check for authentication errors
-                if (result.detail && result.detail.code) {
-                    if (result.detail.code === "MISSING_API_KEY" ||
-                        result.detail.code === "INVALID_API_KEY") {
-                        throw new Error("Invalid API Key.\nContact Admin to get a new key and reinstall.");
-                    }
-                }
-            } catch (e) {
-                if (e.message.indexOf("API Key") >= 0) {
-                    throw e;
-                }
-                throw new Error("Failed to parse backend response: " + e.message);
-            }
-
-            resFile.remove();
-        } else {
-            throw new Error("No response from backend server. Is it running?");
-        }
-
-        reqFile.remove();
-
-        return result;
-    },
-
-    /**
      * Giao tiếp ngầm đồng thời đa luồng bằng 1 batch request duy nhất.
      * @param {Array} jobs - Mảng cấu hình các request dịch cho từng targetLang.
      * @returns {Object} { "langCode1": { "id": "text" }, "langCode2": ... }
@@ -192,47 +63,49 @@ var PythonBackendAdapter = {
         var batchTimestamp = new Date().getTime();
         var filesToCleanup = [];
         var responseMapByLang = {};
+        var pivotImageName = "";
 
-        // 1. Khởi tạo Payload theo Schema mới
-        var endpoint = this.baseUrl + "/api/translate";
+        // 1. Khởi tạo Payload cho /api/v1/document/extract-banner
         var contextUrl = jobs[0].contextUrl;
-        if (contextUrl) {
-            endpoint = this.baseUrl + "/api/v1/translate/with-context";
+        if (!contextUrl) {
+            throw new Error("Sheet URL bắt buộc — vui lòng nhập Google Sheets URL trước khi dịch.");
         }
+        var endpoint = this.baseUrl + "/api/v1/document/extract-banner";
 
         var payload = {
             source_lang: jobs[0].sourceLang || "auto",
-            target_langs: [],
+            sheet_url: contextUrl,
+            translation_type: jobs[0].translationType || "extractor",
             items: []
         };
-
-        if (contextUrl) {
-            payload.context_url = contextUrl;
+        if (jobs[0].projectId) {
+            payload.project_id = jobs[0].projectId;
         }
 
-        // Lấy danh sách ngôn ngữ
+        // Init responseMap theo row_id (response key bằng str(row_id))
         for (var j = 0; j < jobs.length; j++) {
-            payload.target_langs.push({
-                code: jobs[j].langCode,
-                name: jobs[j].targetLang
-            });
-            // Khởi tạo dict rỗng sẵn phòng hờ lỗi
-            responseMapByLang[jobs[j].langCode] = {};
+            responseMapByLang[jobs[j].rowId.toString()] = {};
         }
 
         // Lấy list items từ job đầu tiên (vì tất cả job đều chung 1 list textItems)
         var sourceItems = jobs[0].items || [];
-        for (var i = 0; i < sourceItems.length; i++) {
-            var included = (sourceItems[i].isIncluded !== undefined) ? sourceItems[i].isIncluded : sourceItems[i].isSelected;
-            if (included !== false) {
-                var layerName = sourceItems[i].layerName || "";
-                var isBtn = layerName.toLowerCase().indexOf('btn') > -1 || layerName.toLowerCase().indexOf('button') > -1;
-                payload.items.push({
-                    id: sourceItems[i].id,
-                    text: sourceItems[i].text,
-                    layer_name: layerName,
-                    is_button: isBtn
-                });
+
+        // Duplicate items per row — mỗi item gắn row_id của ngôn ngữ tương ứng
+        for (var k = 0; k < jobs.length; k++) {
+            var currentJob = jobs[k];
+            for (var i = 0; i < sourceItems.length; i++) {
+                var included = (sourceItems[i].isIncluded !== undefined) ? sourceItems[i].isIncluded : sourceItems[i].isSelected;
+                if (included !== false) {
+                    var layerName = sourceItems[i].layerName || "";
+                    var isBtn = layerName.toLowerCase().indexOf('btn') > -1 || layerName.toLowerCase().indexOf('button') > -1;
+                    payload.items.push({
+                        id: sourceItems[i].id,
+                        text: sourceItems[i].text,
+                        row_id: currentJob.rowId,
+                        layer_name: layerName,
+                        is_button: isBtn
+                    });
+                }
             }
         }
 
@@ -301,14 +174,35 @@ var PythonBackendAdapter = {
                 var parsedObj = JSON.parse(bodyStr);
                 if (parsedObj) {
                     if (parsedObj.detail) {
-                        if (parsedObj.detail.code === "MISSING_API_KEY" || parsedObj.detail.code === "INVALID_API_KEY") {
+                        // FastAPI validation errors are arrays
+                        if (parsedObj.detail instanceof Array) {
+                            var errMsg = [];
+                            for (var e = 0; e < parsedObj.detail.length; e++) {
+                                var err = parsedObj.detail[e];
+                                var loc = err.loc ? err.loc.join("->") : "";
+                                errMsg.push(loc + ": " + err.msg);
+                            }
+                            throw new Error("API Validation Error:\n" + errMsg.join("\n"));
+                        } else if (parsedObj.detail.code === "MISSING_API_KEY" || parsedObj.detail.code === "INVALID_API_KEY") {
                             throw new Error("Invalid API Key in Batch Mode.\nContact Admin to get a new key.");
+                        } else if (typeof parsedObj.detail === "string") {
+                            throw new Error("API Error: " + parsedObj.detail);
+                        } else if (parsedObj.detail.message) {
+                            throw new Error("API Error: " + parsedObj.detail.message);
+                        } else {
+                            throw new Error("API Error: " + JSON.stringify(parsedObj.detail));
                         }
                     }
+                    
+                    if (parsedObj.pivot_image_name) {
+                        pivotImageName = parsedObj.pivot_image_name;
+                    }
+
                     if (parsedObj.translations) {
-                        for (var lCode in parsedObj.translations) {
-                            if (parsedObj.translations.hasOwnProperty(lCode)) {
-                                var tArray = parsedObj.translations[lCode];
+                        for (var key in parsedObj.translations) {
+                            if (parsedObj.translations.hasOwnProperty(key)) {
+                                var lCode = key; // for contextUrl, key is row_id. For standard, key is langCode
+                                var tArray = parsedObj.translations[key];
                                 var resultMap = {};
                                 for (var tn = 0; tn < tArray.length; tn++) {
                                     var tItem = tArray[tn];
@@ -323,9 +217,20 @@ var PythonBackendAdapter = {
                 }
             } catch (pe) {
                 // Ignore parsing errors and keep returning what we have
-                if (pe.message.indexOf("API Key") >= 0) {
+                if (pe.message && (pe.message.indexOf("API Key") >= 0 || pe.message.indexOf("API Error") >= 0 || pe.message.indexOf("API Validation Error") >= 0)) {
+                    // Cleanup files before throwing
+                    for (var cx = 0; cx < filesToCleanup.length; cx++) {
+                        if (filesToCleanup[cx].exists) filesToCleanup[cx].remove();
+                    }
                     throw pe;
                 }
+                
+                // If it's a JSON parse error, throw it so user knows the backend returned garbage
+                for (var cx = 0; cx < filesToCleanup.length; cx++) {
+                    if (filesToCleanup[cx].exists) filesToCleanup[cx].remove();
+                }
+                var shortBody = bodyStr.length > 200 ? bodyStr.substring(0, 200) + "..." : bodyStr;
+                throw new Error("Invalid response from Backend:\n" + shortBody);
             }
         } else {
             // Timeout hoặc file không tồn tại
@@ -346,7 +251,10 @@ var PythonBackendAdapter = {
             }
         }
 
-        return responseMapByLang;
+        return {
+            responseMap: responseMapByLang,
+            pivotImageName: pivotImageName
+        };
     }
 };
 

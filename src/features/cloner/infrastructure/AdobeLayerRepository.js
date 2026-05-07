@@ -186,6 +186,22 @@ var AdobeLayerRepository = (function () {
 
     /**
      * @override
+     * Đặt tên cho artboard đang active (artboard gốc / pivot) theo tên ảnh từ Sheet.
+     * Được gọi trước groupSelection() để artboard nguồn có tên đúng trước khi clone.
+     * @param {Object} doc - Cached active document
+     * @param {string} name - Tên ảnh gốc (e.g. "abc.png")
+     */
+    repo.renameActiveArtboard = function (doc, name) {
+        if (!name) return;
+        try {
+            var d = doc || this._doc || app.activeDocument;
+            var idx = d.artboards.getActiveArtboardIndex();
+            d.artboards[idx].name = name;
+        } catch (e) { /* Nếu rename thất bại thì bỏ qua — không block clone */ }
+    };
+
+    /**
+     * @override
      * Groups current selection vào một template group
      *
      * PERFORMANCE FIX:

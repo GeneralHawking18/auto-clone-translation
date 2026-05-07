@@ -8,31 +8,14 @@ var MockBackendAdapter = {
         return this; // No config needed
     },
 
-    /**
-     * Fake translation request (tuần tự)
-     */
-    translate: function (job) {
-        $.sleep(500); // Giả lập độ trễ mạng
-        var result = { translations: [] };
-        var lCode = job.langCode || job.targetLang || "UN";
 
-        for (var i = 0; i < job.items.length; i++) {
-            var item = job.items[i];
-            if (item.isSelected !== false && item.isIncluded !== false) {
-                result.translations.push({
-                    id: item.id,
-                    text: "[MOCK_" + lCode.toUpperCase() + "] " + item.text
-                });
-            }
-        }
-        return result;
-    },
 
     /**
-     * Fake parallel batch translation
+     * Fake parallel batch translation — mirror PythonBackendAdapter contract:
+     * key responseMap by String(rowId) khi job có rowId (banner flow).
      */
     translateBatchParallel: function (jobs) {
-        $.sleep(1000); // Giả lập độ trễ xử lý song song
+        $.sleep(1000); // Giả lập độ trễ
         var responseMapByLang = {};
 
         for (var j = 0; j < jobs.length; j++) {
@@ -43,12 +26,15 @@ var MockBackendAdapter = {
             for (var i = 0; i < job.items.length; i++) {
                 var item = job.items[i];
                 var included = (item.isIncluded !== undefined) ? item.isIncluded : item.isSelected;
-                
                 if (included !== false) {
                     resultMap[item.id] = "[MOCK_" + lCode.toUpperCase() + "] " + item.text;
                 }
             }
-            responseMapByLang[job.langCode] = resultMap;
+
+            var key = (job.rowId !== undefined && job.rowId !== null)
+                ? job.rowId.toString()
+                : job.langCode;
+            responseMapByLang[key] = resultMap;
         }
 
         return responseMapByLang;
