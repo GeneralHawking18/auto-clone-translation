@@ -90,22 +90,18 @@ var PythonBackendAdapter = {
         // Lấy list items từ job đầu tiên (vì tất cả job đều chung 1 list textItems)
         var sourceItems = jobs[0].items || [];
 
-        // Duplicate items per row — mỗi item gắn row_id của ngôn ngữ tương ứng
-        for (var k = 0; k < jobs.length; k++) {
-            var currentJob = jobs[k];
-            for (var i = 0; i < sourceItems.length; i++) {
-                var included = (sourceItems[i].isIncluded !== undefined) ? sourceItems[i].isIncluded : sourceItems[i].isSelected;
-                if (included !== false) {
-                    var layerName = sourceItems[i].layerName || "";
-                    var isBtn = layerName.toLowerCase().indexOf('btn') > -1 || layerName.toLowerCase().indexOf('button') > -1;
-                    payload.items.push({
-                        id: sourceItems[i].id,
-                        text: sourceItems[i].text,
-                        row_id: currentJob.rowId,
-                        layer_name: layerName,
-                        is_button: isBtn
-                    });
-                }
+        // Gửi mỗi element 1 lần — document service tự fanout theo pivot Sheet
+        for (var i = 0; i < sourceItems.length; i++) {
+            var included = (sourceItems[i].isIncluded !== undefined) ? sourceItems[i].isIncluded : sourceItems[i].isSelected;
+            if (included !== false) {
+                var layerName = sourceItems[i].layerName || "";
+                var isBtn = layerName.toLowerCase().indexOf('btn') > -1 || layerName.toLowerCase().indexOf('button') > -1;
+                payload.items.push({
+                    id: sourceItems[i].id,
+                    text: sourceItems[i].text,
+                    layer_name: layerName,
+                    is_button: isBtn
+                });
             }
         }
 
