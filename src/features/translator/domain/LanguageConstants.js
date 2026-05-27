@@ -41,12 +41,25 @@ var LanguageConstants = (function () {
             return SUPPORTED_LANGUAGES;
         },
 
+        _normalizeCode: function(c) {
+            if (!c) return c;
+            var lc = c.replace(/"/g, "").toLowerCase();
+            if (lc === 'kr' || lc === 'kor') return 'ko';
+            if (lc === 'vn' || lc === 'vie') return 'vi';
+            if (lc === 'jp' || lc === 'jpn') return 'ja';
+            if (lc === 'eng') return 'en';
+            if (lc === 'chi') return 'zh-cn';
+            if (lc === 'ind') return 'id';
+            if (lc === 'tha') return 'th';
+            return lc;
+        },
+
         /**
          * Get language name by code (fallback to code if not found)
          */
         getName: function (code) {
             if (!code) return code;
-            var lowerCode = code.replace(/"/g, "").toLowerCase();
+            var lowerCode = this._normalizeCode(code);
             for (var i = 0; i < SUPPORTED_LANGUAGES.length; i++) {
                 if (SUPPORTED_LANGUAGES[i].code.toLowerCase() === lowerCode ||
                     SUPPORTED_LANGUAGES[i].name.toLowerCase() === lowerCode) {
@@ -81,7 +94,7 @@ var LanguageConstants = (function () {
          */
         getIndexByCode: function (code) {
             if (!code) return 0; // Default Vietnamese (index 0)
-            var lowerCode = code.replace(/"/g, "").toLowerCase();
+            var lowerCode = this._normalizeCode(code);
             for (var i = 0; i < SUPPORTED_LANGUAGES.length; i++) {
                 if (SUPPORTED_LANGUAGES[i].code.toLowerCase() === lowerCode ||
                     SUPPORTED_LANGUAGES[i].name.toLowerCase() === lowerCode) {
@@ -97,7 +110,7 @@ var LanguageConstants = (function () {
          */
         getLabelByCode: function (code) {
             if (!code) return 'Unknown';
-            var lowerCode = code.replace(/"/g, "").toLowerCase();
+            var lowerCode = this._normalizeCode(code);
             for (var i = 0; i < SUPPORTED_LANGUAGES.length; i++) {
                 if (SUPPORTED_LANGUAGES[i].code.toLowerCase() === lowerCode ||
                     SUPPORTED_LANGUAGES[i].name.toLowerCase() === lowerCode) {
