@@ -29,7 +29,8 @@ var LanguageConstants = (function () {
         { code: 'pl', name: 'Polish', label: 'Polish (PL)' },
         { code: 'ms', name: 'Malay', label: 'Malay (MS)' },
         { code: 'in', name: 'Hindi', label: 'Hindi (IN)' },
-        { code: 'hi', name: 'Hindi', label: 'Hindi (HI)' }
+        { code: 'hi', name: 'Hindi', label: 'Hindi (HI)' },
+        { code: 'ph', name: 'Filipino', label: 'Filipino (PH)' }
     ];
 
     return {
@@ -51,6 +52,7 @@ var LanguageConstants = (function () {
             if (lc === 'chi') return 'zh-cn';
             if (lc === 'ind') return 'id';
             if (lc === 'tha') return 'th';
+            if (lc === 'fil' || lc === 'phi' || lc === 'tgl') return 'ph';
             return lc;
         },
 
